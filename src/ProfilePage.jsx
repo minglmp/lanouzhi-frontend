@@ -60,7 +60,7 @@ const ProfilePage = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this model?')) return;
     try {
-      const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/models${id}`, {
+      const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/models/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -113,7 +113,7 @@ const ProfilePage = () => {
     setIsUpdating(true);
     try {
       // ⚠️ อย่าลืมเปลี่ยน URL ตรงนี้ให้เป็นโดเมน Worker API ของคุณ ⚠️
-      const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/models${editingModel.id}`, {
+      const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/models/${editingModel.id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
