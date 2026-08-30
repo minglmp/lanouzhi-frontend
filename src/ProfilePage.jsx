@@ -113,7 +113,7 @@ const ProfilePage = () => {
     setIsUpdating(true);
     try {
       // ⚠️ อย่าลืมเปลี่ยน URL ตรงนี้ให้เป็นโดเมน Worker API ของคุณ ⚠️
-      const res = await fetch(`https://your-api-name.workers.dev/api/models${editingModel.id}`, {
+      const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/models${editingModel.id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
