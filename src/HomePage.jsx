@@ -6,7 +6,7 @@ const CATEGORIES = ['All', 'New', 'Art', 'Gadgets', 'Toys'];
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState(CATEGORIES[0]); // เริ่มต้นด้วยแท็บ "All"
+  const [activeTab, setActiveTab] = useState(CATEGORIES[0]);
   
   const [models, setModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -14,21 +14,21 @@ const HomePage = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newImageUrl, setNewImageUrl] = useState('');
-  const [newCategory, setNewCategory] = useState('Art'); // เพิ่ม state สำหรับหมวดหมู่
+  const [newCategory, setNewCategory] = useState('Art');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
-  // 👇 1. เช็กว่าตอนนี้มีคนล็อกอินอยู่หรือไม่ (ถ้ามี token = true) 👇
   const token = localStorage.getItem('maker_token');
   const isLoggedIn = !!token;
 
   let currentUser = null;
-  let currentUserRole = null; // 👇 เพิ่มตัวแปรเก็บสิทธิ์ (Role)
+  let currentUserRole = null;
+  
   if (token) {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
-      currentUser = payload.username; // ดึง username ออกมาเทียบ
-      currentUserRole = payload.role; // 👇 ดึง role ออกมาจาก Token
+      currentUser = payload.username;
+      currentUserRole = payload.role;
     } catch(e) {
       console.error('Token invalid');
     }
@@ -55,17 +55,15 @@ const HomePage = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // เช็กขนาดไฟล์ไม่ให้เกิน 1MB (เพื่อไม่ให้ฐานข้อมูลทำงานหนักเกินไป)
       if (file.size > 1024 * 1024) {
         alert('Please select an image smaller than 1MB');
-        e.target.value = ''; // เคลียร์ไฟล์ทิ้ง
+        e.target.value = '';
         return;
       }
       
-      // แปลงไฟล์รูปภาพเป็น Base64 String
       const reader = new FileReader();
       reader.onloadend = () => {
-        setNewImageUrl(reader.result); // เก็บข้อมูลรูปใน state เดิมเลย
+        setNewImageUrl(reader.result);
       };
       reader.readAsDataURL(file);
     }
@@ -75,7 +73,7 @@ const HomePage = () => {
     e.preventDefault();
     if (!newImageUrl) {
       setUploadError('Please select an image before uploading.');
-      return; // สั่ง return เพื่อหยุดการทำงาน ไม่ให้โหลดต่อ
+      return;
     }
     setIsUploading(true);
     setUploadError('');
@@ -109,75 +107,45 @@ const HomePage = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this model?')) return;
-    
-    try {
-      const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/models${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (res.ok) {
-        fetchModels(); 
-      } else {
-        const data = await res.json();
-        alert(data.message || 'You do not have permission to delete this.'); 
-      }
-    } catch (err) {
-      alert('Server connection error occurred.');
-    }
-  };
-
   const handleOrder = (modelTitle) => {
     alert(`🎉 Order placed successfully for:\n"${modelTitle}"\n\nThank you for your purchase! (Guest Checkout)`);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('maker_token');
-    window.location.reload(); // รีเฟรชหน้าเว็บเพื่อให้กลับสู่โหมด Guest
+    window.location.reload(); 
   };
 
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredModels = models.filter((model) => {
-    // 1. กรองด้วยช่องค้นหา
     const query = searchQuery.toLowerCase();
     const matchTitle = model.title.toLowerCase().includes(query);
     const matchAuthor = model.author && model.author.toLowerCase().includes(query);
     const matchSearch = matchTitle || matchAuthor;
     
-    // 2. กรองด้วยแท็บหมวดหมู่
     let matchCategory = true;
     
     if (activeTab === 'All') {
-      // แท็บ All: โชว์ทุกชิ้น (ผ่านเงื่อนไขเสมอ)
       matchCategory = true;
     } else if (activeTab === 'New') {
-      // แท็บ New: เช็กวันที่อัปโหลดว่าไม่เกิน 1 เดือน
       if (model.created_at) {
-        // ดึงเวลาปัจจุบัน
         const now = new Date();
-        // ย้อนเวลาไป 1 เดือนที่แล้ว
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(now.getMonth() - 1);
         
-        // SQLite มักจะเก็บเวลาเป็น "YYYY-MM-DD HH:MM:SS" เราต้องแปลงให้เป็น Date object
-        // เติม 'Z' เข้าไปเพื่อให้รู้ว่าเป็น UTC Time
         const modelDate = new Date(model.created_at.replace(' ', 'T') + 'Z'); 
-        
         matchCategory = modelDate >= oneMonthAgo;
       } else {
-        matchCategory = true; // ถ้าเพิ่งอัปโหลดสดๆ ร้อนๆ แล้วยังไม่มีวันที่
+        matchCategory = true; 
       }
     } else {
-      // แท็บอื่นๆ (Art, Gadgets, Toys): เช็กให้หมวดหมู่ตรงกันเป๊ะๆ
       matchCategory = model.category === activeTab;
     }
 
     return matchSearch && matchCategory;
   });
-    // Pumpkin / #ff7518 hex color
+
   return (
     <div className="flex min-h-screen bg-[#121212] font-sans relative">
       
@@ -207,36 +175,19 @@ const HomePage = () => {
               My Profile
             </button>
           )}
-          {/* <button className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" /></svg>
-            All Models
-          </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            Customers
-          </button> */}
         </nav>
         <div className="mt-auto p-4 border-t border-[#2d2d2f]">
           
-          {/* 1. กลุ่มไอคอน Social Media */}
           <div className="flex items-center gap-4 mb-4 text-gray-500">
-            {/* Facebook */}
             <a href="#" className="hover:text-gray-300 transition-colors">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
             </a>
-            {/* Instagram */}
             <a href="#" className="hover:text-gray-300 transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
             </a>
-            {/* YouTube */}
             <a href="#" className="hover:text-gray-300 transition-colors">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.5 12 3.5 12 3.5s-7.505 0-9.377.55a3.016 3.016 0 0 0-2.122 2.136C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.55 9.376.55 9.376.55s7.505 0 9.377-.55a3.016 3.016 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
             </a>
-            {/* X (Twitter)
-            <a href="#" className="hover:text-gray-300 transition-colors">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            </a> */}
-            {/* TikTok */}
             <a href="#" className="hover:text-gray-300 transition-colors">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
             </a>
@@ -270,10 +221,6 @@ const HomePage = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* <button className="hidden sm:block text-gray-400 hover:text-white transition-colors">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </button> */}
-            
             {isLoggedIn ? (
               <>
                 <button onClick={() => setIsUploadModalOpen(true)} className="hidden sm:block bg-[#262628] hover:bg-[#333] text-white px-5 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700">
@@ -323,30 +270,15 @@ const HomePage = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredModels.map((model) => (
-              // 👇 เปลี่ยนพื้นหลังการ์ดเป็นสีดำ (bg-gray-900) และปรับขอบ 👇
               <div key={model.id} className="group bg-gray-900 rounded-3xl overflow-hidden border border-gray-800 shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col relative">
                 
-                {/* 👇 ถ้าเป็นเจ้าของผลงาน "หรือ" มีสิทธิ์เป็น 'admin' ให้โชว์ปุ่มถังขยะ 👇 */}
-                {(currentUser === model.author || currentUserRole === 'admin') && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleDelete(model.id); }}
-                    className="absolute top-3 right-3 bg-black/70 hover:bg-red-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors z-10 opacity-0 group-hover:opacity-100"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                )}
-
                 <div className="relative aspect-[4/3] overflow-hidden bg-gray-800">
                   <img src={model.image_url} alt={model.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80' }} />
                 </div>
                 
                 <div className="p-4 flex-1 flex flex-col">
-                  {/* 👇 เปลี่ยนสีชื่อผลงานเป็นสีขาว (text-white) 👇 */}
                   <h3 className="text-white font-semibold text-lg truncate mb-1">{model.title}</h3>
                   <div className="flex items-center gap-2 mb-4">
-                    {/* 👇 ปรับสีไอคอนและชื่อคนสร้างให้สว่างขึ้น (text-gray-400) 👇 */}
                     <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center text-[10px] font-bold text-gray-300">
                       {model.author ? model.author.charAt(0).toUpperCase() : 'U'}
                     </div>
@@ -365,9 +297,9 @@ const HomePage = () => {
           </div>
         )}
       </main>
-      </div> {/* ปิด div พื้นที่เนื้อหาหลักตรงนี้แทน (เพื่อให้อยู่คู่กับ Sidebar) */}
+      </div> 
 
-      {/* ================= Upload Modal (เหมือนเดิม) ================= */}
+      {/* ================= Upload Modal ================= */}
       {isUploadModalOpen && (
          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity">
          <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl relative animate-in fade-in zoom-in duration-200">
@@ -384,7 +316,6 @@ const HomePage = () => {
                <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Name</label>
                <input type="text" required value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Articulated Dragon" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all outline-none" />
              </div>
-             {/* 👇 เปลี่ยนจากช่องใส่ URL เป็นช่องเลือกไฟล์รูปภาพ 👇 */}
              <div>
                <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Image</label>
                <input 
@@ -394,13 +325,12 @@ const HomePage = () => {
                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 transition-all outline-none cursor-pointer"
                />
                
-               {/* แสดงรูปตัวอย่างพรีวิวเมื่อเลือกไฟล์เสร็จ */}
                {newImageUrl && (
                  <div className="mt-4 relative rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
                    <img src={newImageUrl} alt="Preview" className="w-full h-40 object-cover" />
                    <button 
                      type="button"
-                     onClick={() => setNewImageUrl('')} // ปุ่มกากบาทลบรูป
+                     onClick={() => setNewImageUrl('')} 
                      className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1.5 hover:bg-red-500 transition-colors"
                    >
                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -408,7 +338,6 @@ const HomePage = () => {
                  </div>
                )}
              </div>
-             {/* 👇 เพิ่ม Dropdown เลือกหมวดหมู่ 👇 */}
              <div>
                <label className="block text-sm font-medium text-gray-900 mb-1.5">Category</label>
                <select
@@ -416,7 +345,6 @@ const HomePage = () => {
                  onChange={(e) => setNewCategory(e.target.value)}
                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all outline-none"
                >
-                 {/* กรองเอา All และ New ออกจากตัวเลือก */}
                  {CATEGORIES.filter(c => c !== 'All' && c !== 'New').map(c => (
                    <option key={c} value={c}>{c}</option>
                  ))}
@@ -426,7 +354,6 @@ const HomePage = () => {
                <button type="button" onClick={() => setIsUploadModalOpen(false)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3.5 rounded-xl transition-all">Cancel</button>
                <button 
                  type="submit" 
-                 // 👇 ปิดปุ่มถ้ากำลังอัปโหลด หรือ ยังไม่มีรูป 👇
                  disabled={isUploading || !newImageUrl} 
                  className={`flex-1 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md ${
                    (isUploading || !newImageUrl) 
