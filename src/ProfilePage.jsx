@@ -7,6 +7,15 @@ const ProfilePage = () => {
   const [myModels, setMyModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // State สำหรับระบบแก้ไข (Edit)
+  const [editingModel, setEditingModel] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editCategory, setEditCategory] = useState('Art');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  
+  const CATEGORIES = ['Art', 'Gadgets', 'Toys']; // หมวดหมู่ที่มีให้เลือก
+
   // 1. ดึงข้อมูลผู้ใช้จาก Token
   const token = localStorage.getItem('maker_token');
   let currentUser = null;
@@ -69,6 +78,66 @@ const ProfilePage = () => {
   };
 
   if (!currentUser) return null; // ป้องกันการเรนเดอร์ก่อน Redirect
+
+  // เมื่อกดปุ่มดินสอ ให้ดึงข้อมูลเก่ามาแสดงในหน้าต่างแก้ไข
+  const handleEditClick = (model) => {
+    setEditingModel(model);
+    setEditTitle(model.title);
+    setEditCategory(model.category || 'Art');
+    setEditImageUrl(model.image_url);
+  };
+
+  // จัดการเมื่อเลือกรูปภาพใหม่ (แปลงเป็น Base64)
+  const handleEditImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 1024 * 1024) {
+        alert('Please select an image smaller than 1MB');
+        e.target.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => setEditImageUrl(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // กดยืนยันการอัปเดต
+  const handleUpdateSubmit = async (e) => {
+    e.preventDefault();
+    if (!editImageUrl) {
+      alert('Please provide an image.');
+      return;
+    }
+    
+    setIsUpdating(true);
+    try {
+      // ⚠️ อย่าลืมเปลี่ยน URL ตรงนี้ให้เป็นโดเมน Worker API ของคุณ ⚠️
+      const res = await fetch(`https://your-api-name.workers.dev/api/models/${editingModel.id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({
+          title: editTitle,
+          image_url: editImageUrl,
+          category: editCategory
+        })
+      });
+
+      if (res.ok) {
+        setEditingModel(null); // ปิดหน้าต่าง Modal
+        fetchMyModels(); // โหลดข้อมูลใหม่มาแสดง
+      } else {
+        alert('Failed to update model.');
+      }
+    } catch (err) {
+      alert('Server error occurred.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-[#18181a] font-sans relative">
@@ -139,15 +208,21 @@ const ProfilePage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {myModels.map((model) => (
                 <div key={model.id} className="group bg-[#1c1c1e] rounded-3xl overflow-hidden border border-[#2d2d2f] shadow-md hover:border-[#444] transition-all duration-300 flex flex-col relative">
-                  
-                  {/* ปุ่มลบ */}
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleDelete(model.id); }}
-                    className="absolute top-3 right-3 bg-black/70 hover:bg-red-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors z-10 opacity-0 group-hover:opacity-100"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
-
+                  {/* ปุ่มแก้ไข (ดินสอ) & ลบ (ถังขยะ) */}
+                  <div className="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleEditClick(model); }}
+                      className="bg-black/70 hover:bg-blue-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDelete(model.id); }}
+                      className="bg-black/70 hover:bg-red-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  </div>
                   <div className="relative aspect-[4/3] overflow-hidden bg-black">
                     <img src={model.image_url} alt={model.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   </div>
@@ -158,6 +233,47 @@ const ProfilePage = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+          {/* ================= Edit Modal ================= */}
+          {editingModel && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
+                <button onClick={() => setEditingModel(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+                <div className="p-8">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Model</h2>
+                  <form onSubmit={handleUpdateSubmit} className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Name</label>
+                      <input 
+                        type="text" required value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1.5">Category</label>
+                      <select 
+                        value={editCategory} onChange={(e) => setEditCategory(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
+                      >
+                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1.5">Update Image</label>
+                      <input type="file" accept="image/*" onChange={handleEditImageChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 cursor-pointer" />
+                      {editImageUrl && (
+                        <img src={editImageUrl} alt="Preview" className="mt-4 w-full h-40 object-cover rounded-xl border border-gray-200" />
+                      )}
+                    </div>
+                    <button type="submit" disabled={isUpdating} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md disabled:bg-gray-400">
+                      {isUpdating ? 'Saving Changes...' : 'Save Changes'}
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
           )}
         </main>
