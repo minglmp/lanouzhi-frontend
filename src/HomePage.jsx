@@ -311,7 +311,7 @@ const HomePage = () => {
                     {/* ป้ายกำกับ: โชว์เฉพาะตอนที่มีมากกว่า 1 รูป */}
                     {parseImages(model.image_url).length > 1 && (
                       <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md border border-gray-700 shadow-sm z-10">
-                        +{parseImages(model.image_url).length - 1} รูป
+                        +{parseImages(model.image_url).length - 1} photos
                       </div>
                     )}
                   </div>

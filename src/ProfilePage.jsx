@@ -19,11 +19,11 @@ const ProfilePage = () => {
   const [myModels, setMyModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // State สำหรับระบบแก้ไข (Edit)
+  // State สำหรับระบบแก้ไข (Edit) รองรับหลายรูป
   const [editingModel, setEditingModel] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editCategory, setEditCategory] = useState('Art');
-  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editImages, setEditImages] = useState([]); // 👈 เปลี่ยนเป็น Array
   const [isUpdating, setIsUpdating] = useState(false);
 
   // 1. ดึงข้อมูลผู้ใช้จาก Token
@@ -56,7 +56,6 @@ const ProfilePage = () => {
       const response = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/models');
       if (response.ok) {
         const allModels = await response.json();
-        // กรองเอาเฉพาะผลงานที่ผู้ใช้คนนี้เป็นคนสร้าง
         const filtered = allModels.filter(model => model.author === currentUser);
         setMyModels(filtered);
       }
@@ -88,37 +87,50 @@ const ProfilePage = () => {
     navigate('/');
   };
 
-  if (!currentUser) return null; // ป้องกันการเรนเดอร์ก่อน Redirect
+  if (!currentUser) return null; 
 
   // เมื่อกดปุ่มดินสอ ให้ดึงข้อมูลเก่ามาแสดงในหน้าต่างแก้ไข
   const handleEditClick = (model) => {
     setEditingModel(model);
     setEditTitle(model.title);
     setEditCategory(model.category || 'Art');
-    // ดึงรูปแรกสุดมาแสดงเป็นพรีวิวตอนแก้ไข
-    setEditImageUrl(parseImages(model.image_url)[0]);
+    setEditImages(parseImages(model.image_url)); // 👈 ดึงรูปทั้งหมดมาใส่ Array
   };
 
-  // จัดการเมื่อเลือกรูปภาพใหม่ (แปลงเป็น Base64)
+  // จัดการเมื่อเลือกรูปภาพใหม่หลายรูป
   const handleEditImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    // จำกัดสูงสุดไม่เกิน 4 รูปต่อโมเดล
+    if (editImages.length + files.length > 4) {
+      alert('You can upload up to 4 images per model.');
+      return;
+    }
+
+    files.forEach((file) => {
       if (file.size > 1024 * 1024) {
-        alert('Please select an image smaller than 1MB');
-        e.target.value = '';
+        alert(`File "${file.name}" exceeds 1MB.`);
         return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => setEditImageUrl(reader.result);
+      reader.onloadend = () => {
+        setEditImages((prev) => [...prev, reader.result]);
+      };
       reader.readAsDataURL(file);
-    }
+    });
+  };
+
+  // ลบรูประหว่างการแก้ไข
+  const handleRemoveEditImage = (indexToRemove) => {
+    setEditImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
   // กดยืนยันการอัปเดต
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
-    if (!editImageUrl) {
-      alert('Please provide an image.');
+    if (editImages.length === 0) {
+      alert('Please provide at least one image.');
       return;
     }
 
@@ -132,14 +144,14 @@ const ProfilePage = () => {
         },
         body: JSON.stringify({
           title: editTitle,
-          images: [editImageUrl], // ⚠️ เปลี่ยนมาส่งเป็น Array ตามระบบใหม่
+          images: editImages, // 👈 ส่ง Array ทั้งก้อนไปให้ Backend
           category: editCategory
         })
       });
 
       if (res.ok) {
-        setEditingModel(null); // ปิดหน้าต่าง Modal
-        fetchMyModels(); // โหลดข้อมูลใหม่มาแสดง
+        setEditingModel(null);
+        fetchMyModels();
       } else {
         alert('Failed to update model.');
       }
@@ -175,7 +187,6 @@ const ProfilePage = () => {
       {/* ================= เนื้อหาหลัก (ขวา) ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
 
-        {/* Navbar */}
         <nav className="bg-[#18181a] sticky top-0 z-40 px-6 py-4 flex items-center justify-end gap-6 border-b border-[#2d2d2f]">
           <button onClick={() => navigate('/')} className="md:hidden text-gray-400 hover:text-white">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
@@ -187,7 +198,7 @@ const ProfilePage = () => {
 
         <main className="w-full max-w-5xl mx-auto px-6 mt-8">
 
-          {/* Section 1: ข้อมูลผู้ใช้ (Profile Card) */}
+          {/* Profile Card */}
           <div className="bg-[#1c1c1e] rounded-3xl p-8 mb-10 border border-[#2d2d2f] flex items-center gap-6 shadow-lg">
             <div className="w-24 h-24 bg-[#FF7518] rounded-full flex items-center justify-center text-4xl font-bold text-white shadow-inner">
               {currentUser.charAt(0).toUpperCase()}
@@ -203,7 +214,6 @@ const ProfilePage = () => {
             </div>
           </div>
 
-          {/* Section 2: ผลงานของฉัน (My Models) */}
           <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4">My Uploaded Models ({myModels.length})</h2>
 
           {isLoading ? (
@@ -220,7 +230,6 @@ const ProfilePage = () => {
               {myModels.map((model) => (
                 <div key={model.id} className="group bg-[#1c1c1e] rounded-3xl overflow-hidden border border-[#2d2d2f] shadow-md hover:border-[#444] transition-all duration-300 flex flex-col relative">
                   
-                  {/* ปุ่มแก้ไข (ดินสอ) & ลบ (ถังขยะ) */}
                   <div className="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleEditClick(model); }}
@@ -236,14 +245,12 @@ const ProfilePage = () => {
                     </button>
                   </div>
 
-                  {/* ภาพผลงาน */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-black">
                     <img 
                       src={parseImages(model.image_url)[0]} 
                       alt={model.title} 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                     />
-                    {/* ป้ายกำกับ: โชว์เฉพาะตอนที่มีมากกว่า 1 รูป */}
                     {parseImages(model.image_url).length > 1 && (
                       <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md border border-gray-700 shadow-sm z-10 pointer-events-none">
                         +{parseImages(model.image_url).length - 1} รูป
@@ -262,13 +269,13 @@ const ProfilePage = () => {
 
           {/* ================= Edit Modal ================= */}
           {editingModel && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
-                <button onClick={() => setEditingModel(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors">
+                <button onClick={() => setEditingModel(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors z-10">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
-                <div className="p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Model</h2>
+                <div className="p-8 max-h-[90vh] overflow-y-auto hide-scrollbar">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Model 🎨</h2>
                   <form onSubmit={handleUpdateSubmit} className="space-y-5">
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Name</label>
@@ -277,6 +284,36 @@ const ProfilePage = () => {
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
                       />
                     </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Images (Up to 4)</label>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        multiple // 👈 ใส่ multiple เพื่อให้เลือกได้หลายไฟล์
+                        onChange={handleEditImageChange} 
+                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 cursor-pointer outline-none" 
+                      />
+                      
+                      {/* พรีวิวรูปภาพแบบตาราง พร้อมปุ่มลบ */}
+                      {editImages.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 mt-4">
+                          {editImages.map((img, index) => (
+                            <div key={index} className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+                              <img src={img} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                              <button 
+                                type="button"
+                                onClick={() => handleRemoveEditImage(index)} 
+                                className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1 hover:bg-red-500 transition-colors"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1.5">Category</label>
                       <select
@@ -286,14 +323,8 @@ const ProfilePage = () => {
                         {CATEGORIES.filter(c => c !== 'All' && c !== 'New').map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1.5">Update Image</label>
-                      <input type="file" accept="image/*" onChange={handleEditImageChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 cursor-pointer" />
-                      {editImageUrl && (
-                        <img src={editImageUrl} alt="Preview" className="mt-4 w-full h-40 object-cover rounded-xl border border-gray-200" />
-                      )}
-                    </div>
-                    <button type="submit" disabled={isUpdating} className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md disabled:bg-gray-400">
+                    
+                    <button type="submit" disabled={isUpdating || editImages.length === 0} className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md disabled:bg-gray-400 mt-4">
                       {isUpdating ? 'Saving Changes...' : 'Save Changes'}
                     </button>
                   </form>
