@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logoImg from './assets/logo2.jpeg'; // ใช้โลโก้เดิม
+import logoImg from './assets/logo2.jpeg';
+
+const CATEGORIES = ['All', 'New', 'Art', 'Gadgets', 'Toys'];
+
+// ฟังก์ชันแปลงข้อมูลรูปภาพ
+const parseImages = (imageUrlField) => {
+  try {
+    const parsed = JSON.parse(imageUrlField);
+    return Array.isArray(parsed) ? parsed : [imageUrlField];
+  } catch {
+    return [imageUrlField];
+  }
+};
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -13,8 +25,6 @@ const ProfilePage = () => {
   const [editCategory, setEditCategory] = useState('Art');
   const [editImageUrl, setEditImageUrl] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
-  
-  const CATEGORIES = ['Art', 'Gadgets', 'Toys']; // หมวดหมู่ที่มีให้เลือก
 
   // 1. ดึงข้อมูลผู้ใช้จาก Token
   const token = localStorage.getItem('maker_token');
@@ -26,7 +36,7 @@ const ProfilePage = () => {
       const payload = JSON.parse(atob(token.split('.')[1]));
       currentUser = payload.username;
       currentUserRole = payload.role;
-    } catch(e) {
+    } catch (e) {
       console.error('Token invalid');
     }
   }
@@ -57,6 +67,7 @@ const ProfilePage = () => {
     }
   };
 
+  // ลบผลงาน
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this model?')) return;
     try {
@@ -65,7 +76,7 @@ const ProfilePage = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
-        fetchMyModels(); 
+        fetchMyModels();
       }
     } catch (err) {
       alert('Server error occurred.');
@@ -84,7 +95,8 @@ const ProfilePage = () => {
     setEditingModel(model);
     setEditTitle(model.title);
     setEditCategory(model.category || 'Art');
-    setEditImageUrl(model.image_url);
+    // ดึงรูปแรกสุดมาแสดงเป็นพรีวิวตอนแก้ไข
+    setEditImageUrl(parseImages(model.image_url)[0]);
   };
 
   // จัดการเมื่อเลือกรูปภาพใหม่ (แปลงเป็น Base64)
@@ -109,19 +121,18 @@ const ProfilePage = () => {
       alert('Please provide an image.');
       return;
     }
-    
+
     setIsUpdating(true);
     try {
-      // ⚠️ อย่าลืมเปลี่ยน URL ตรงนี้ให้เป็นโดเมน Worker API ของคุณ ⚠️
       const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/models/${editingModel.id}`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           title: editTitle,
-          image_url: editImageUrl,
+          images: [editImageUrl], // ⚠️ เปลี่ยนมาส่งเป็น Array ตามระบบใหม่
           category: editCategory
         })
       });
@@ -141,14 +152,14 @@ const ProfilePage = () => {
 
   return (
     <div className="flex min-h-screen bg-[#18181a] font-sans relative">
-      
+
       {/* ================= Sidebar (ซ้าย) ================= */}
       <aside className="w-[240px] bg-[#1c1c1e] border-r border-[#2d2d2f] hidden md:flex flex-col sticky top-0 h-screen z-50">
         <div className="p-4 h-[72px] flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <img src={logoImg} alt="Logo" className="w-7 object-contain rounded-md" />
           <span className="font-bold text-[17px] text-white tracking-tight">Lanouzhi.lab</span>
         </div>
-        
+
         <nav className="flex-1 px-3 py-2 space-y-1">
           <button onClick={() => navigate('/')} className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
@@ -163,7 +174,7 @@ const ProfilePage = () => {
 
       {/* ================= เนื้อหาหลัก (ขวา) ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
-        
+
         {/* Navbar */}
         <nav className="bg-[#18181a] sticky top-0 z-40 px-6 py-4 flex items-center justify-end gap-6 border-b border-[#2d2d2f]">
           <button onClick={() => navigate('/')} className="md:hidden text-gray-400 hover:text-white">
@@ -175,7 +186,7 @@ const ProfilePage = () => {
         </nav>
 
         <main className="w-full max-w-5xl mx-auto px-6 mt-8">
-          
+
           {/* Section 1: ข้อมูลผู้ใช้ (Profile Card) */}
           <div className="bg-[#1c1c1e] rounded-3xl p-8 mb-10 border border-[#2d2d2f] flex items-center gap-6 shadow-lg">
             <div className="w-24 h-24 bg-[#FF7518] rounded-full flex items-center justify-center text-4xl font-bold text-white shadow-inner">
@@ -208,25 +219,38 @@ const ProfilePage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {myModels.map((model) => (
                 <div key={model.id} className="group bg-[#1c1c1e] rounded-3xl overflow-hidden border border-[#2d2d2f] shadow-md hover:border-[#444] transition-all duration-300 flex flex-col relative">
+                  
                   {/* ปุ่มแก้ไข (ดินสอ) & ลบ (ถังขยะ) */}
                   <div className="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); handleEditClick(model); }}
                       className="bg-black/70 hover:bg-blue-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                     </button>
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); handleDelete(model.id); }}
                       className="bg-black/70 hover:bg-red-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                   </div>
+
+                  {/* ภาพผลงาน */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-black">
-                    <img src={model.image_url} alt={model.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img 
+                      src={parseImages(model.image_url)[0]} 
+                      alt={model.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    />
+                    {/* ป้ายกำกับ: โชว์เฉพาะตอนที่มีมากกว่า 1 รูป */}
+                    {parseImages(model.image_url).length > 1 && (
+                      <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md border border-gray-700 shadow-sm z-10 pointer-events-none">
+                        +{parseImages(model.image_url).length - 1} รูป
+                      </div>
+                    )}
                   </div>
-                  
+
                   <div className="p-4">
                     <h3 className="text-white font-semibold text-lg truncate mb-1">{model.title}</h3>
                     <p className="text-xs text-gray-500">Uploaded by you</p>
@@ -235,6 +259,7 @@ const ProfilePage = () => {
               ))}
             </div>
           )}
+
           {/* ================= Edit Modal ================= */}
           {editingModel && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -247,18 +272,18 @@ const ProfilePage = () => {
                   <form onSubmit={handleUpdateSubmit} className="space-y-5">
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Name</label>
-                      <input 
+                      <input
                         type="text" required value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1.5">Category</label>
-                      <select 
+                      <select
                         value={editCategory} onChange={(e) => setEditCategory(e.target.value)}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
                       >
-                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        {CATEGORIES.filter(c => c !== 'All' && c !== 'New').map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                     <div>
@@ -268,7 +293,7 @@ const ProfilePage = () => {
                         <img src={editImageUrl} alt="Preview" className="mt-4 w-full h-40 object-cover rounded-xl border border-gray-200" />
                       )}
                     </div>
-                    <button type="submit" disabled={isUpdating} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md disabled:bg-gray-400">
+                    <button type="submit" disabled={isUpdating} className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md disabled:bg-gray-400">
                       {isUpdating ? 'Saving Changes...' : 'Save Changes'}
                     </button>
                   </form>
