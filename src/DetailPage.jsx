@@ -125,7 +125,23 @@ const DetailPage = () => {
                 <p className="text-lg font-bold text-white">{model.author}</p>
               </div>
             </div>
-
+            {/* ================= 🌟 กล่อง Details (เพิ่มใหม่ตรงนี้) 🌟 ================= */}
+            <div className="mb-6 p-5 bg-[#1c1c1e] rounded-2xl border border-[#2d2d2f] flex-1">
+              <h3 className="text-sm font-bold text-gray-400 mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Model Details
+              </h3>
+              
+              {/* ส่วนเนื้อหา */}
+              <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
+                {model.description 
+                  ? model.description 
+                  : "No description provided for this model yet. Stay tuned for more details!"}
+              </p>
+            </div>
+            {/* ==================================================================== */}
             {/* ปุ่มสั่งซื้อ */}
             <div className="mt-auto">
               <button 

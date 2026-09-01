@@ -22,6 +22,7 @@ const ProfilePage = () => {
   // State สำหรับระบบแก้ไข (Edit) รองรับหลายรูป
   const [editingModel, setEditingModel] = useState(null);
   const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const [editCategory, setEditCategory] = useState('Art');
   const [editImages, setEditImages] = useState([]); // 👈 เปลี่ยนเป็น Array
   const [isUpdating, setIsUpdating] = useState(false);
@@ -93,6 +94,7 @@ const ProfilePage = () => {
   const handleEditClick = (model) => {
     setEditingModel(model);
     setEditTitle(model.title);
+    setEditDescription(model.description || '');
     setEditCategory(model.category || 'Art');
     setEditImages(parseImages(model.image_url)); // 👈 ดึงรูปทั้งหมดมาใส่ Array
   };
@@ -144,6 +146,7 @@ const ProfilePage = () => {
         },
         body: JSON.stringify({
           title: editTitle,
+          description: editDescription,
           images: editImages, // 👈 ส่ง Array ทั้งก้อนไปให้ Backend
           category: editCategory
         })
@@ -284,6 +287,17 @@ const ProfilePage = () => {
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
                       />
                     </div>
+                    {/* 🌟 แทรกช่อง Edit Description ตรงนี้ 🌟 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1.5">Description</label>
+                      <textarea
+                        rows="3"
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none resize-none"
+                      ></textarea>
+                    </div>
+                    {/* ======================================= */}
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Images (Up to 4)</label>

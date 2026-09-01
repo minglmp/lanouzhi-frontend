@@ -24,6 +24,7 @@ const HomePage = () => {
   // States สำหรับ Upload Modal
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [newDescription, setNewDescription] = useState('');
   const [newImages, setNewImages] = useState([]);
   const [newCategory, setNewCategory] = useState('Art');
   const [isUploading, setIsUploading] = useState(false);
@@ -114,6 +115,7 @@ const HomePage = () => {
         },
         body: JSON.stringify({
           title: newTitle,
+          description: newDescription,
           images: newImages, // ส่งเป็น Array
           category: newCategory
         })
@@ -125,6 +127,7 @@ const HomePage = () => {
       // เคลียร์ค่าทั้งหมดหลังอัปโหลดสำเร็จ
       setIsUploadModalOpen(false);
       setNewTitle('');
+      setNewDescription('');
       setNewImages([]);
       fetchModels();
     } catch (err) {
@@ -366,6 +369,18 @@ const HomePage = () => {
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all outline-none"
                 />
               </div>
+              {/* 🌟 แทรกช่อง Description ตรงนี้เลยครับ 🌟 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1.5">Description (Optional)</label>
+                <textarea
+                  rows="3"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Tell us about this model..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all outline-none resize-none"
+                ></textarea>
+              </div>
+              {/* ======================================= */}
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Images (Up to 4)</label>
                 <input
