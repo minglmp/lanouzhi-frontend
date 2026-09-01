@@ -23,6 +23,7 @@ const ProfilePage = () => {
   const [editingModel, setEditingModel] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editPrice, setEditPrice] = useState(0);
   const [editCategory, setEditCategory] = useState('Art');
   const [editImages, setEditImages] = useState([]); // 👈 เปลี่ยนเป็น Array
   const [isUpdating, setIsUpdating] = useState(false);
@@ -97,6 +98,7 @@ const ProfilePage = () => {
     setEditingModel(model);
     setEditTitle(model.title);
     setEditDescription(model.description || '');
+    setEditPrice(model.price || 0);
     setEditCategory(model.category || 'Art');
     setEditImages(parseImages(model.image_url)); // 👈 ดึงรูปทั้งหมดมาใส่ Array
   };
@@ -150,7 +152,8 @@ const ProfilePage = () => {
           title: editTitle,
           description: editDescription,
           images: editImages, // 👈 ส่ง Array ทั้งก้อนไปให้ Backend
-          category: editCategory
+          category: editCategory,
+          price: Number(editPrice)
         })
       });
 
@@ -342,6 +345,21 @@ const ProfilePage = () => {
                       >
                         {CATEGORIES.filter(c => c !== 'All' && c !== 'New').map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1.5">Price (LAK)</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          value={editPrice} // 👈 ใช้ตัวแปร editPrice
+                          onChange={(e) => setEditPrice(e.target.value)}
+                          placeholder="e.g., 50000 (Leave 0 for Free)"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
+                        />
+                        <span className="absolute right-4 top-3 text-gray-400 text-sm font-bold">₭</span>
+                      </div>
                     </div>
                     
                     <button type="submit" disabled={isUpdating || editImages.length === 0} className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md disabled:bg-gray-400 mt-4">

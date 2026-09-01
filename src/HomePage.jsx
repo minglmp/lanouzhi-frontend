@@ -25,6 +25,7 @@ const HomePage = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [newPrice, setNewPrice] = useState('');
   const [newImages, setNewImages] = useState([]);
   const [newCategory, setNewCategory] = useState('Art');
   const [isUploading, setIsUploading] = useState(false);
@@ -116,6 +117,7 @@ const HomePage = () => {
         body: JSON.stringify({
           title: newTitle,
           description: newDescription,
+          price: Number(newPrice) || 0,
           images: newImages, // ส่งเป็น Array
           category: newCategory
         })
@@ -128,6 +130,7 @@ const HomePage = () => {
       setIsUploadModalOpen(false);
       setNewTitle('');
       setNewDescription('');
+      setNewPrice('');
       setNewImages([]);
       fetchModels();
     } catch (err) {
@@ -377,6 +380,22 @@ const HomePage = () => {
                 ></textarea>
               </div>
               {/* ======================================= */}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1.5">Price (LAK)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    value={newPrice}
+                    onChange={(e) => setNewPrice(e.target.value)}
+                    placeholder="e.g., 50000 (Leave 0 for Free)"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
+                  />
+                  <span className="absolute right-4 top-3 text-gray-400 text-sm font-bold">₭</span>
+                </div>
+              </div>
+              
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Images (Up to 4)</label>
                 <input

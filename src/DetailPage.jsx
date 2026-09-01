@@ -250,7 +250,14 @@ const DetailPage = () => {
                 <p className="text-white font-semibold truncate">{model.title}</p>
                 <div className="flex justify-between mt-2 pt-2 border-t border-[#2d2d2f]">
                   <span className="text-gray-400 text-sm">Total Price:</span>
-                  <span className="text-[#FF7518] font-bold">50,000 LAK</span> {/* 👈 ตรงนี้เดี๋ยวค่อยทำระบบราคาจริงทีหลัง */}
+                  
+                  {/* 🌟 แสดงราคาจริงตรงนี้ 🌟 */}
+                  <span className="text-[#FF7518] font-bold">
+                    {model.price && model.price > 0 
+                      ? `${model.price.toLocaleString()} LAK` 
+                      : 'Free'}
+                  </span>
+                  
                 </div>
               </div>
 
@@ -262,6 +269,17 @@ const DetailPage = () => {
                   <img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg" alt="QR Code" className="w-32 h-32" />
                 </div>
               </div>
+
+              <div className="text-center mb-4 bg-black/40 px-4 py-2.5 rounded-xl border border-[#2d2d2f] w-full max-w-[260px]">
+                  <p className="text-gray-400 text-[11px] uppercase tracking-wider mb-1">
+                    ADMIN BANK ACCOUNT NUMBER
+                  </p>
+                  <div className="flex items-center justify-center gap-2">
+                    <p className="text-[#FF7518] font-mono font-bold text-[15px] tracking-widest">
+                      160-12-00-12345678
+                    </p>
+                  </div>
+                </div>
 
               {/* ช่องอัปโหลดสลิป */}
               <div className="mb-8">
