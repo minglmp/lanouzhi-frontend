@@ -24,7 +24,8 @@ const AuthPage = () => {
   }, [navigate]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); 
+    e.preventDefault();
+    const fullPhoneNumber = `+85620${phoneNumber}`;
     setIsLoading(true);
     setErrorMessage('');
     setSuccessMessage('');
@@ -32,7 +33,7 @@ const AuthPage = () => {
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
     const url = `https://my-cloudflare-api.lmps.workers.dev${endpoint}`; 
 
-    const payload = isLogin ? { phone_number: phoneNumber, password } : { username, phone_number: phoneNumber, password };
+    const payload = isLogin ? { phone_number: fullPhoneNumber, password } : { username, phone_number: fullPhoneNumber, password };
 
     try {
       const res = await fetch(url, {
@@ -126,14 +127,22 @@ const AuthPage = () => {
           {/* 2. ช่องเบอร์โทรศัพท์ (แสดงตลอดทั้งตอน Login และ Register) */}
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-1.5">Phone Number</label>
+            <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:border-gray-900 focus-within:ring-1 focus-within:ring-gray-900 transition-all">
+          {/* กล่องข้อความ +85620 ที่ล็อกไว้ */}
+              <span className="pl-4 pr-2 py-3 text-sm font-semibold text-gray-600 bg-gray-100/50 border-r border-gray-200 select-none">
+                +85620
+              </span>
+          {/* ช่องให้ผู้ใช้พิมพ์แค่เลขที่เหลือ */}
             <input 
               type="tel" 
-              required
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="+85620-XXXX-XXXX" 
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all outline-none"
+              required 
+              value={phoneNumber} // ⚠️ ตรวจสอบชื่อตัวแปร State ของคุณให้ตรงด้วยนะครับ
+              onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))} // .replace(/\D/g, '') ช่วยบังคับให้พิมพ์ได้แค่ตัวเลขครับ
+              placeholder="XXXX-XXXX"
+              maxLength="8"
+              className="w-full px-3 py-3 text-sm bg-transparent outline-none"
             />
+            </div>
           </div>
 
           {/* 3. ช่อง Password */}

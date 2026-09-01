@@ -19,6 +19,10 @@ const DetailPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  // State สำหรับ Checkout Modal
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [slipImage, setSlipImage] = useState('');
+  const [isOrdering, setIsOrdering] = useState(false);
 
   useEffect(() => {
     const fetchModelDetail = async () => {
@@ -35,6 +39,69 @@ const DetailPage = () => {
     };
     fetchModelDetail();
   }, [id]);
+
+  // 1. เช็กว่าล็อกอินหรือยังก่อนเปิดหน้า Checkout
+  const handleOrderClick = () => {
+    const token = localStorage.getItem('maker_token');
+    if (!token) {
+      alert("Please log in to purchase this model.");
+      navigate('/auth');
+      return;
+    }
+    setIsCheckoutModalOpen(true);
+  };
+
+  // 2. จัดการเมื่ออัปโหลดสลิป
+  const handleSlipChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // ไม่เกิน 2MB
+        alert('Please select an image smaller than 2MB');
+        e.target.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => setSlipImage(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // 3. กดยืนยันการสั่งซื้อ
+  const handleConfirmOrder = async () => {
+    if (!slipImage) {
+      alert('Please upload your payment slip before confirming.');
+      return;
+    }
+
+    const token = localStorage.getItem('maker_token');
+    setIsOrdering(true);
+    
+    try {
+      const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          model_id: model.id,
+          slip_image: slipImage
+        })
+      });
+
+      if (res.ok) {
+        alert('🎉 Order submitted successfully!\n\nPlease wait for the Admin to verify your payment. Once approved, you can download the files.');
+        setIsCheckoutModalOpen(false);
+        setSlipImage('');
+      } else {
+        alert('Failed to place order. Please try again.');
+      }
+    } catch (err) {
+      alert('Server error occurred.');
+    } finally {
+      setIsOrdering(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -145,7 +212,7 @@ const DetailPage = () => {
             {/* ปุ่มสั่งซื้อ */}
             <div className="mt-auto">
               <button 
-                onClick={() => alert(`🎉 Proceeding to checkout for:\n"${model.title}"`)} 
+                onClick={handleOrderClick}
                 className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-bold py-4 rounded-2xl text-lg transition-all shadow-lg hover:shadow-orange-500/30 flex justify-center items-center gap-3"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -158,6 +225,73 @@ const DetailPage = () => {
 
         </div>
       </div>
+      {/* ================= Checkout Modal ================= */}
+      {isCheckoutModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-[#1c1c1e] rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-[#2d2d2f] relative animate-in fade-in zoom-in duration-200">
+            
+            {/* ปุ่มปิด Modal */}
+            <button 
+              onClick={() => { setIsCheckoutModalOpen(false); setSlipImage(''); }} 
+              className="absolute top-4 right-4 text-gray-400 hover:text-white bg-black/30 hover:bg-black/50 rounded-full p-2 transition-colors z-10"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+
+            <div className="p-8">
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                <svg className="w-6 h-6 text-[#FF7518]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                Secure Checkout
+              </h2>
+
+              {/* สรุปออเดอร์ */}
+              <div className="bg-black/50 rounded-xl p-4 mb-6 border border-[#2d2d2f]">
+                <p className="text-gray-400 text-sm mb-1">Order Summary</p>
+                <p className="text-white font-semibold truncate">{model.title}</p>
+                <div className="flex justify-between mt-2 pt-2 border-t border-[#2d2d2f]">
+                  <span className="text-gray-400 text-sm">Total Price:</span>
+                  <span className="text-[#FF7518] font-bold">50,000 LAK</span> {/* 👈 ตรงนี้เดี๋ยวค่อยทำระบบราคาจริงทีหลัง */}
+                </div>
+              </div>
+
+              {/* QR Code สำหรับโอนเงิน */}
+              <div className="flex flex-col items-center mb-6">
+                <p className="text-white font-medium mb-3 text-sm">Scan QR Code to Pay (BCEL One)</p>
+                <div className="bg-white p-2 rounded-xl">
+                  {/* เปลี่ยนเป็นรูป QR Code จริงของคุณได้เลย */}
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg" alt="QR Code" className="w-32 h-32" />
+                </div>
+              </div>
+
+              {/* ช่องอัปโหลดสลิป */}
+              <div className="mb-8">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Upload Payment Slip</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleSlipChange}
+                  className="w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[#2d2d2f] file:text-white hover:file:bg-[#3d3d3f] cursor-pointer outline-none transition-all" 
+                />
+                {slipImage && (
+                  <div className="mt-3 relative w-24 h-32 rounded-lg overflow-hidden border border-[#2d2d2f]">
+                    <img src={slipImage} alt="Slip Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+
+              {/* ปุ่มกด Confirm */}
+              <button 
+                onClick={handleConfirmOrder}
+                disabled={isOrdering || !slipImage}
+                className="w-full bg-[#FF7518] hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-md flex justify-center items-center"
+              >
+                {isOrdering ? 'Verifying...' : 'Confirm Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ================================================= */}
     </div>
   );
 };
