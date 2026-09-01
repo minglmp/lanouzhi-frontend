@@ -57,7 +57,9 @@ const ProfilePage = () => {
       const response = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/models');
       if (response.ok) {
         const allModels = await response.json();
-        const filtered = allModels.filter(model => model.author === currentUser);
+        const filtered = currentUserRole === 'admin' 
+          ? allModels 
+          : allModels.filter(model => model.author === currentUser);
         setMyModels(filtered);
       }
     } catch (error) {
@@ -217,7 +219,9 @@ const ProfilePage = () => {
             </div>
           </div>
 
-          <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4">My Uploaded Models ({myModels.length})</h2>
+          <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4">
+            {currentUserRole === 'admin' ? 'All Models in System (Admin View)' : 'My Uploaded Models'} ({myModels.length})
+          </h2>
 
           {isLoading ? (
             <div className="text-center py-12 text-gray-400 animate-pulse">Loading your models...</div>
@@ -256,14 +260,16 @@ const ProfilePage = () => {
                     />
                     {parseImages(model.image_url).length > 1 && (
                       <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md border border-gray-700 shadow-sm z-10 pointer-events-none">
-                        +{parseImages(model.image_url).length - 1} รูป
+                        +{parseImages(model.image_url).length - 1} photos
                       </div>
                     )}
                   </div>
 
                   <div className="p-4">
                     <h3 className="text-white font-semibold text-lg truncate mb-1">{model.title}</h3>
-                    <p className="text-xs text-gray-500">Uploaded by you</p>
+                    <p className="text-xs text-gray-500">
+                    {model.author === currentUser ? 'Uploaded by you' : `Uploaded by @${model.author}`}
+                  </p>
                   </div>
                 </div>
               ))}
