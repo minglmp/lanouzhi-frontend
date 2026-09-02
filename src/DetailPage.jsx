@@ -15,15 +15,18 @@ const DetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   
+  // ================= State Management =================
   const [model, setModel] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  
   // State สำหรับ Checkout Modal
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [slipImage, setSlipImage] = useState('');
   const [isOrdering, setIsOrdering] = useState(false);
 
+  // ================= Fetch Data =================
   useEffect(() => {
     const fetchModelDetail = async () => {
       try {
@@ -40,6 +43,7 @@ const DetailPage = () => {
     fetchModelDetail();
   }, [id]);
 
+  // ================= Event Handlers =================
   // 1. เช็กว่าล็อกอินหรือยังก่อนเปิดหน้า Checkout
   const handleOrderClick = () => {
     const token = localStorage.getItem('maker_token');
@@ -103,6 +107,7 @@ const DetailPage = () => {
     }
   };
 
+  // ================= Rendering =================
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#121212] flex items-center justify-center text-white font-medium animate-pulse">
@@ -128,7 +133,7 @@ const DetailPage = () => {
     <div className="min-h-screen bg-[#121212] text-white p-6 md:p-12 font-sans flex justify-center">
       <div className="max-w-6xl w-full">
         
-        {/* ================= ปุ่มย้อนกลับ ================= */}
+        {/* ----- ปุ่มย้อนกลับ ----- */}
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-gray-400 hover:text-white mb-8 transition-colors group">
           <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -138,7 +143,7 @@ const DetailPage = () => {
 
         <div className="flex flex-col md:flex-row gap-10">
           
-          {/* ================= ฝั่งซ้าย: รูปภาพใหญ่ และ Thumbnails ================= */}
+          {/* ----- ฝั่งซ้าย: รูปภาพใหญ่ และ Thumbnails ----- */}
           <div className="w-full md:w-3/5 flex flex-col gap-4">
             {/* กล่องรูปภาพหลัก */}
             <div className="bg-[#1c1c1e] rounded-3xl overflow-hidden border border-[#2d2d2f] shadow-2xl relative aspect-[4/3] md:aspect-auto md:h-[600px]">
@@ -170,7 +175,7 @@ const DetailPage = () => {
             )}
           </div>
 
-          {/* ================= ฝั่งขวา: รายละเอียดโมเดล (ที่หายไป) ================= */}
+          {/* ----- ฝั่งขวา: รายละเอียดโมเดล ----- */}
           <div className="w-full md:w-2/5 flex flex-col justify-center">
             {/* ป้ายหมวดหมู่ */}
             <div className="inline-block bg-[#2d2d2f] text-gray-300 text-xs font-bold px-3 py-1 rounded-full w-max mb-4">
@@ -192,7 +197,8 @@ const DetailPage = () => {
                 <p className="text-lg font-bold text-white">{model.author}</p>
               </div>
             </div>
-            {/* ================= 🌟 กล่อง Details (เพิ่มใหม่ตรงนี้) 🌟 ================= */}
+            
+            {/* กล่อง Details */}
             <div className="mb-6 p-5 bg-[#1c1c1e] rounded-2xl border border-[#2d2d2f] flex-1">
               <h3 className="text-sm font-bold text-gray-400 mb-3 flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -208,7 +214,7 @@ const DetailPage = () => {
                   : "No description provided for this model yet. Stay tuned for more details!"}
               </p>
             </div>
-            {/* ==================================================================== */}
+            
             {/* ปุ่มสั่งซื้อ */}
             <div className="mt-auto">
               <button 
@@ -222,9 +228,9 @@ const DetailPage = () => {
               </button>
             </div>
           </div>
-
         </div>
       </div>
+
       {/* ================= Checkout Modal ================= */}
       {isCheckoutModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
@@ -250,23 +256,22 @@ const DetailPage = () => {
                 <p className="text-white font-semibold truncate">{model.title}</p>
                 <div className="flex justify-between mt-2 pt-2 border-t border-[#2d2d2f]">
                   <span className="text-gray-400 text-sm">Total Price:</span>
-                  
-                  {/* 🌟 แสดงราคาจริงตรงนี้ 🌟 */}
                   <span className="text-[#FF7518] font-bold">
                     {model.price && model.price > 0 
                       ? `${model.price.toLocaleString()} LAK` 
                       : 'Free'}
                   </span>
-                  
                 </div>
               </div>
 
               {/* QR Code สำหรับโอนเงิน */}
               <div className="flex flex-col items-center mb-6">
                 <p className="text-white font-medium mb-3 text-sm">Scan QR Code to Pay (BCEL One)</p>
-                <div className="text-center mb-4 bg-black/40 px-4 py-2.5 rounded-xl border border-[#2d2d2f] w-full max-w-[260px]">
+                
+                {/* 🌟 กล่องบัญชี (เพิ่ม mx-auto จัดกลางเป๊ะๆ) 🌟 */}
+                <div className="mx-auto text-center mb-4 bg-black/40 px-4 py-2.5 rounded-xl border border-[#2d2d2f] w-full max-w-[260px]">
                   <p className="text-gray-400 text-[11px] uppercase tracking-wider mb-1">
-                    ADMIN BANK ACCOUNT NUMBER
+                    ADMIN ACCOUNT NUMBER
                   </p>
                   <div className="flex items-center justify-center gap-2">
                     <p className="text-[#FF7518] font-mono font-bold text-[15px] tracking-widest">
@@ -274,11 +279,13 @@ const DetailPage = () => {
                     </p>
                   </div>
                 </div>
+
                 <div className="bg-white p-2 rounded-xl">
                   {/* เปลี่ยนเป็นรูป QR Code จริงของคุณได้เลย */}
                   <img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg" alt="QR Code" className="w-32 h-32" />
                 </div>
               </div>
+
               {/* ช่องอัปโหลดสลิป */}
               <div className="mb-8">
                 <label className="block text-sm font-medium text-gray-300 mb-2">Upload Payment Slip</label>
@@ -307,7 +314,6 @@ const DetailPage = () => {
           </div>
         </div>
       )}
-      {/* ================================================= */}
     </div>
   );
 };

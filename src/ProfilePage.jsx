@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoImg from './assets/logo2.jpeg';
 
@@ -16,19 +16,26 @@ const parseImages = (imageUrlField) => {
 
 const ProfilePage = () => {
   const navigate = useNavigate();
+
+  // ================= State Management =================
+  // State สำหรับจัดการผลงาน
   const [myModels, setMyModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // State สำหรับระบบแก้ไข (Edit) รองรับหลายรูป
+  // State สำหรับจัดการระบบแอดมิน (Orders)
+  const [orders, setOrders] = useState([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+
+  // State สำหรับระบบแก้ไขผลงาน (Edit Modal)
   const [editingModel, setEditingModel] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editPrice, setEditPrice] = useState(0);
   const [editCategory, setEditCategory] = useState('Art');
-  const [editImages, setEditImages] = useState([]); // 👈 เปลี่ยนเป็น Array
+  const [editImages, setEditImages] = useState([]);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // 1. ดึงข้อมูลผู้ใช้จาก Token
+  // ================= Authentication =================
   const token = localStorage.getItem('maker_token');
   let currentUser = null;
   let currentUserRole = null;
@@ -43,24 +50,15 @@ const ProfilePage = () => {
     }
   }
 
-  // 2. ถ้าไม่ได้ล็อกอิน ให้เด้งกลับไปหน้า Auth
-  useEffect(() => {
-    if (!token) {
-      navigate('/auth');
-    } else {
-      fetchMyModels();
-    }
-  }, [navigate, token]);
-
-  // 3. ดึงผลงานทั้งหมด แล้วกรองเอาเฉพาะของตัวเอง
-  const fetchMyModels = async () => {
+  // ================= API Functions =================
+  const fetchMyModels = useCallback(async () => {
     try {
       const response = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/models');
       if (response.ok) {
         const allModels = await response.json();
-        const filtered = currentUserRole === 'admin' 
-          ? allModels 
-          : allModels.filter(model => model.author === currentUser);
+        const filtered = currentUserRole === 'admin'
+          ? allModels
+          : allModels.filter((model) => model.author === currentUser);
         setMyModels(filtered);
       }
     } catch (error) {
@@ -68,15 +66,49 @@ const ProfilePage = () => {
     } finally {
       setIsLoading(false);
     }
+  }, [currentUser, currentUserRole]);
+
+  const fetchAdminOrders = useCallback(async () => {
+    if (currentUserRole !== 'admin' || !token) return;
+
+    setIsLoadingOrders(true);
+    try {
+      const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/orders', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(data);
+      }
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  }, [currentUserRole, token]);
+
+  // Initial Load
+  useEffect(() => {
+    if (!token) {
+      navigate('/auth');
+    } else {
+      fetchMyModels();
+      fetchAdminOrders();
+    }
+  }, [navigate, token, fetchMyModels, fetchAdminOrders]);
+
+  // ================= Event Handlers =================
+  const handleLogout = () => {
+    localStorage.removeItem('maker_token');
+    navigate('/');
   };
 
-  // ลบผลงาน
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this model?')) return;
     try {
       const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/models/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         fetchMyModels();
@@ -86,29 +118,41 @@ const ProfilePage = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('maker_token');
-    navigate('/');
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        alert(`Order has been ${newStatus}!`);
+        setOrders(orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)));
+      } else {
+        alert('Failed to update order status');
+      }
+    } catch (err) {
+      alert('Server error occurred.');
+    }
   };
 
-  if (!currentUser) return null; 
-
-  // เมื่อกดปุ่มดินสอ ให้ดึงข้อมูลเก่ามาแสดงในหน้าต่างแก้ไข
+  // ----- Edit Modal Handlers -----
   const handleEditClick = (model) => {
     setEditingModel(model);
     setEditTitle(model.title);
     setEditDescription(model.description || '');
     setEditPrice(model.price || 0);
     setEditCategory(model.category || 'Art');
-    setEditImages(parseImages(model.image_url)); // 👈 ดึงรูปทั้งหมดมาใส่ Array
+    setEditImages(parseImages(model.image_url));
   };
 
-  // จัดการเมื่อเลือกรูปภาพใหม่หลายรูป
   const handleEditImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    // จำกัดสูงสุดไม่เกิน 4 รูปต่อโมเดล
     if (editImages.length + files.length > 4) {
       alert('You can upload up to 4 images per model.');
       return;
@@ -127,12 +171,10 @@ const ProfilePage = () => {
     });
   };
 
-  // ลบรูประหว่างการแก้ไข
   const handleRemoveEditImage = (indexToRemove) => {
     setEditImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // กดยืนยันการอัปเดต
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     if (editImages.length === 0) {
@@ -146,15 +188,15 @@ const ProfilePage = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           title: editTitle,
           description: editDescription,
-          images: editImages, // 👈 ส่ง Array ทั้งก้อนไปให้ Backend
+          images: editImages,
           category: editCategory,
-          price: Number(editPrice)
-        })
+          price: Number(editPrice),
+        }),
       });
 
       if (res.ok) {
@@ -170,10 +212,11 @@ const ProfilePage = () => {
     }
   };
 
+  if (!currentUser) return null;
+
   return (
     <div className="flex min-h-screen bg-[#18181a] font-sans relative">
-
-      {/* ================= Sidebar (ซ้าย) ================= */}
+      {/* ================= Sidebar ================= */}
       <aside className="w-[240px] bg-[#1c1c1e] border-r border-[#2d2d2f] hidden md:flex flex-col sticky top-0 h-screen z-50">
         <div className="p-4 h-[72px] flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <img src={logoImg} alt="Logo" className="w-7 object-contain rounded-md" />
@@ -192,9 +235,8 @@ const ProfilePage = () => {
         </nav>
       </aside>
 
-      {/* ================= เนื้อหาหลัก (ขวา) ================= */}
+      {/* ================= Main Content ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
-
         <nav className="bg-[#18181a] sticky top-0 z-40 px-6 py-4 flex items-center justify-end gap-6 border-b border-[#2d2d2f]">
           <button onClick={() => navigate('/')} className="md:hidden text-gray-400 hover:text-white">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
@@ -205,8 +247,7 @@ const ProfilePage = () => {
         </nav>
 
         <main className="w-full max-w-5xl mx-auto px-6 mt-8">
-
-          {/* Profile Card */}
+          {/* ----- Profile Card ----- */}
           <div className="bg-[#1c1c1e] rounded-3xl p-8 mb-10 border border-[#2d2d2f] flex items-center gap-6 shadow-lg">
             <div className="w-24 h-24 bg-[#FF7518] rounded-full flex items-center justify-center text-4xl font-bold text-white shadow-inner">
               {currentUser.charAt(0).toUpperCase()}
@@ -222,6 +263,73 @@ const ProfilePage = () => {
             </div>
           </div>
 
+          {/* ----- ADMIN ORDER MANAGEMENT ----- */}
+          {currentUserRole === 'admin' && (
+            <div className="mb-12">
+              <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4 flex items-center gap-2">
+                <svg className="w-6 h-6 text-[#FF7518]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                Customer Orders (Needs Verification)
+              </h2>
+
+              <div className="bg-[#1c1c1e] border border-[#2d2d2f] rounded-2xl overflow-hidden">
+                {isLoadingOrders ? (
+                  <p className="text-gray-400 text-center py-8">Loading orders...</p>
+                ) : orders.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">No orders yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-gray-300">
+                      <thead className="text-xs text-gray-400 uppercase bg-black/40 border-b border-[#2d2d2f]">
+                        <tr>
+                          <th className="px-6 py-4">Buyer</th>
+                          <th className="px-6 py-4">Model</th>
+                          <th className="px-6 py-4 text-center">Payment Slip</th>
+                          <th className="px-6 py-4 text-center">Status</th>
+                          <th className="px-6 py-4 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orders.map((order) => (
+                          <tr key={order.id} className="border-b border-[#2d2d2f] hover:bg-black/20">
+                            <td className="px-6 py-4 font-medium text-white">@{order.buyer_username}</td>
+                            <td className="px-6 py-4 truncate max-w-[150px]">{order.model_title || order.model_id}</td>
+                            
+                            <td className="px-6 py-4 text-center">
+                              <a href={order.slip_image} target="_blank" rel="noreferrer" className="text-[#FF7518] hover:underline flex flex-col items-center gap-1">
+                                <img src={order.slip_image} alt="Slip" className="w-10 h-14 object-cover rounded border border-[#2d2d2f]" />
+                                <span className="text-xs">View Slip</span>
+                              </a>
+                            </td>
+                            
+                            <td className="px-6 py-4 text-center">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                order.status === 'approved' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                                order.status === 'rejected' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                                'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                              }`}>
+                                {order.status.toUpperCase()}
+                              </span>
+                            </td>
+                            
+                            <td className="px-6 py-4 flex justify-center gap-2">
+                              {order.status === 'pending' && (
+                                <>
+                                  <button onClick={() => handleUpdateOrderStatus(order.id, 'approved')} className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors">Approve</button>
+                                  <button onClick={() => handleUpdateOrderStatus(order.id, 'rejected')} className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors">Reject</button>
+                                </>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ----- All Models Section ----- */}
           <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4">
             {currentUserRole === 'admin' ? 'All Models in System (Admin View)' : 'My Uploaded Models'} ({myModels.length})
           </h2>
@@ -271,15 +379,15 @@ const ProfilePage = () => {
                   <div className="p-4">
                     <h3 className="text-white font-semibold text-lg truncate mb-1">{model.title}</h3>
                     <p className="text-xs text-gray-500">
-                    {model.author === currentUser ? 'Uploaded by you' : `Uploaded by @${model.author}`}
-                  </p>
+                      {model.author === currentUser ? 'Uploaded by you' : `Uploaded by @${model.author}`}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* ================= Edit Modal ================= */}
+          {/* ----- Edit Modal ----- */}
           {editingModel && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
@@ -296,7 +404,7 @@ const ProfilePage = () => {
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
                       />
                     </div>
-                    {/* 🌟 แทรกช่อง Edit Description ตรงนี้ 🌟 */}
+                    
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1.5">Description</label>
                       <textarea
@@ -306,19 +414,17 @@ const ProfilePage = () => {
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none resize-none"
                       ></textarea>
                     </div>
-                    {/* ======================================= */}
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Images (Up to 4)</label>
                       <input 
                         type="file" 
                         accept="image/*" 
-                        multiple // 👈 ใส่ multiple เพื่อให้เลือกได้หลายไฟล์
+                        multiple
                         onChange={handleEditImageChange} 
                         className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 cursor-pointer outline-none" 
                       />
                       
-                      {/* พรีวิวรูปภาพแบบตาราง พร้อมปุ่มลบ */}
                       {editImages.length > 0 && (
                         <div className="grid grid-cols-2 gap-2 mt-4">
                           {editImages.map((img, index) => (
@@ -353,7 +459,7 @@ const ProfilePage = () => {
                         <input
                           type="number"
                           min="0"
-                          value={editPrice} // 👈 ใช้ตัวแปร editPrice
+                          value={editPrice}
                           onChange={(e) => setEditPrice(e.target.value)}
                           placeholder="e.g., 50000 (Leave 0 for Free)"
                           className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
