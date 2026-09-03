@@ -23,6 +23,10 @@ const ProfilePage = () => {
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
+  // 🌟 State สำหรับระบบ Pagination (แบ่งหน้า)
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 10;
+
   const [editingModel, setEditingModel] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -49,7 +53,10 @@ const ProfilePage = () => {
   }
 
   useEffect(() => {
-    if (location.state?.openOrders) setCurrentView('orders');
+    if (location.state?.openOrders) {
+      setCurrentView('orders');
+      setCurrentPage(1); // รีเซ็ตกลับมาหน้า 1 เมื่อเปิดเมนูตาราง
+    }
   }, [location]);
 
   const fetchMyModels = useCallback(async () => {
@@ -69,7 +76,6 @@ const ProfilePage = () => {
     }
   }, [currentUser, currentUserRole]);
 
-  // 🌟 ปลดล็อก: ไม่เช็ก Role ว่าต้องเป็นแอดมินแล้ว ทุกคนดึงได้ (ฝั่ง Backend จะกรองข้อมูลให้เอง)
   const fetchOrders = useCallback(async () => {
     if (!token) return;
     setIsLoadingOrders(true);
@@ -97,10 +103,15 @@ const ProfilePage = () => {
     }
   }, [navigate, token, fetchMyModels, fetchOrders]);
 
-  // ป้ายแจ้งเตือนสีแดงโชว์เฉพาะ Admin
   const pendingOrdersCount = currentUserRole === 'admin' 
     ? orders.filter(order => order.status === 'pending').length 
     : 0;
+
+  // 🌟 คำนวณข้อมูลสำหรับการแบ่งหน้า (Pagination Logic)
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const totalPages = Math.ceil(orders.length / ordersPerPage);
 
   const handleLogout = () => {
     localStorage.removeItem('maker_token');
@@ -234,7 +245,6 @@ const ProfilePage = () => {
 
   return (
     <div className="flex min-h-screen bg-[#18181a] font-sans relative">
-      {/* ================= Sidebar ================= */}
       <aside className="w-[240px] bg-[#1c1c1e] border-r border-[#2d2d2f] hidden md:flex flex-col sticky top-0 h-screen z-50">
         <div className="p-4 h-[72px] flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <img src={logoImg} alt="Logo" className="w-7 object-contain rounded-md" />
@@ -257,9 +267,11 @@ const ProfilePage = () => {
             My Profile
           </button>
 
-          {/* 🌟 ปุ่ม Manage Orders / My Purchases 🌟 */}
           <button 
-            onClick={() => setCurrentView('orders')} 
+            onClick={() => {
+              setCurrentView('orders');
+              setCurrentPage(1);
+            }} 
             className={`w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors ${
               currentView === 'orders' ? 'bg-[#2d2d2f] text-white' : 'text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50'
             }`}
@@ -297,7 +309,6 @@ const ProfilePage = () => {
         </div>
       </aside>
 
-      {/* ================= Main Content ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
         <nav className="bg-[#18181a] sticky top-0 z-40 px-6 py-4 flex items-center justify-end gap-6 border-b border-[#2d2d2f]">
           <button onClick={() => navigate('/')} className="md:hidden text-gray-400 hover:text-white">
@@ -309,11 +320,8 @@ const ProfilePage = () => {
         </nav>
 
         <main className="w-full max-w-5xl mx-auto px-6 mt-8">
-          
-          {/* ================= หน้าจอ Profile ================= */}
           {currentView === 'profile' ? (
             <>
-              {/* Profile Card */}
               <div className="bg-[#1c1c1e] rounded-3xl p-8 mb-10 border border-[#2d2d2f] flex items-center gap-6 shadow-lg">
                 <div className="w-24 h-24 bg-[#FF7518] rounded-full flex items-center justify-center text-4xl font-bold text-white shadow-inner">
                   {currentUser.charAt(0).toUpperCase()}
@@ -388,7 +396,6 @@ const ProfilePage = () => {
               )}
             </>
           ) : (
-            /* ================= หน้าจอ Manage Orders / My Purchases ================= */
             <>
               <div className="mb-12">
                 <h2 className="text-2xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4 flex items-center gap-2">
@@ -401,7 +408,7 @@ const ProfilePage = () => {
                   )}
                 </h2>
 
-                <div className="bg-[#1c1c1e] border border-[#2d2d2f] rounded-2xl overflow-hidden shadow-lg">
+                <div className="bg-[#1c1c1e] border border-[#2d2d2f] rounded-2xl overflow-hidden shadow-lg flex flex-col">
                   {isLoadingOrders ? (
                     <p className="text-gray-400 text-center py-12">Loading orders...</p>
                   ) : orders.length === 0 ? (
@@ -410,68 +417,87 @@ const ProfilePage = () => {
                       <p className="text-sm opacity-80 text-gray-400">{currentUserRole === 'admin' ? 'When customers place an order, it will appear here.' : 'Head over to the home page to explore models!'}</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm text-gray-300">
-                        <thead className="text-xs text-gray-400 uppercase bg-black/40 border-b border-[#2d2d2f]">
-                          <tr>
-                            {/* เปลี่ยนหัวตารางนิดหน่อยตาม Role */}
-                            {currentUserRole === 'admin' ? <th className="px-6 py-4">Buyer</th> : <th className="px-6 py-4">Order ID</th>}
-                            <th className="px-6 py-4">Model</th>
-                            <th className="px-6 py-4 text-center">Status</th>
-                            <th className="px-6 py-4 text-center">{currentUserRole === 'admin' ? 'Action' : 'Note'}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {orders.map((order) => (
-                            <tr key={order.id} className="border-b border-[#2d2d2f] hover:bg-black/20 transition-colors">
-                              {/* แสดงชื่อผู้ซื้อถ้าเป็นแอดมิน, แสดงรหัสออเดอร์ถ้าเป็นลูกค้า */}
-                              {currentUserRole === 'admin' ? (
-                                <td className="px-6 py-4 font-medium text-white">@{order.buyer_username}</td>
-                              ) : (
-                                <td className="px-6 py-4 font-medium text-gray-400">#{order.id.substring(0, 8).toUpperCase()}</td>
-                              )}
-                              
-                              <td className="px-6 py-4 truncate max-w-[150px]">{order.model_title || order.model_id}</td>
-                              <td className="px-6 py-4 text-center">
-                                <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-                                  order.status === 'approved' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
-                                  order.status === 'rejected' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
-                                  'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
-                                }`}>
-                                  {order.status.toUpperCase()}
-                                </span>
-                              </td>
-                              
-                              <td className="px-6 py-4 flex justify-center gap-2">
-                                {/* แอดมินจะเห็นปุ่มอนุมัติ, ลูกค้าจะเห็นคำอธิบาย */}
-                                {currentUserRole === 'admin' ? (
-                                  order.status === 'pending' ? (
-                                    <>
-                                      <button onClick={() => handleUpdateOrderStatus(order.id, 'approved')} className="px-3 py-1.5 bg-green-600/20 text-green-500 border border-green-600/50 hover:bg-green-600 hover:text-white rounded-lg transition-colors font-medium">Approve</button>
-                                      <button onClick={() => handleUpdateOrderStatus(order.id, 'rejected')} className="px-3 py-1.5 bg-red-600/20 text-red-500 border border-red-600/50 hover:bg-red-600 hover:text-white rounded-lg transition-colors font-medium">Reject</button>
-                                    </>
-                                  ) : (
-                                    <span className="text-gray-500 text-xs italic">Reviewed</span>
-                                  )
-                                ) : (
-                                  // ของลูกค้าโชว์แค่นี้
-                                  <span className="text-gray-400 text-xs">
-                                    {order.status === 'approved' ? '✅ Ready to download' : order.status === 'rejected' ? '❌ Invalid slip' : '⏳ Waiting for admin'}
-                                  </span>
-                                )}
-                              </td>
+                    <>
+                      <div className="overflow-x-auto flex-1">
+                        <table className="w-full text-left text-sm text-gray-300">
+                          <thead className="text-xs text-gray-400 uppercase bg-black/40 border-b border-[#2d2d2f]">
+                            <tr>
+                              {currentUserRole === 'admin' ? <th className="px-6 py-4">Buyer</th> : <th className="px-6 py-4">Order ID</th>}
+                              <th className="px-6 py-4">Model</th>
+                              <th className="px-6 py-4 text-center">Status</th>
+                              <th className="px-6 py-4 text-center">{currentUserRole === 'admin' ? 'Action' : 'Note'}</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {currentOrders.map((order) => (
+                              <tr key={order.id} className="border-b border-[#2d2d2f] hover:bg-black/20 transition-colors">
+                                {currentUserRole === 'admin' ? (
+                                  <td className="px-6 py-4 font-medium text-white">@{order.buyer_username}</td>
+                                ) : (
+                                  <td className="px-6 py-4 font-medium text-gray-400">#{order.id.substring(0, 8).toUpperCase()}</td>
+                                )}
+                                
+                                <td className="px-6 py-4 truncate max-w-[150px]">{order.model_title || order.model_id}</td>
+                                <td className="px-6 py-4 text-center">
+                                  <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
+                                    order.status === 'approved' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                                    order.status === 'rejected' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                                    'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                                  }`}>
+                                    {order.status.toUpperCase()}
+                                  </span>
+                                </td>
+                                
+                                <td className="px-6 py-4 flex justify-center gap-2">
+                                  {currentUserRole === 'admin' ? (
+                                    order.status === 'pending' ? (
+                                      <>
+                                        <button onClick={() => handleUpdateOrderStatus(order.id, 'approved')} className="px-3 py-1.5 bg-green-600/20 text-green-500 border border-green-600/50 hover:bg-green-600 hover:text-white rounded-lg transition-colors font-medium">Approve</button>
+                                        <button onClick={() => handleUpdateOrderStatus(order.id, 'rejected')} className="px-3 py-1.5 bg-red-600/20 text-red-500 border border-red-600/50 hover:bg-red-600 hover:text-white rounded-lg transition-colors font-medium">Reject</button>
+                                      </>
+                                    ) : (
+                                      <span className="text-gray-500 text-xs italic">Reviewed</span>
+                                    )
+                                  ) : (
+                                    <span className="text-gray-400 text-xs">
+                                      {order.status === 'approved' ? '✅ Ready to download' : order.status === 'rejected' ? '❌ Invalid slip' : '⏳ Waiting for admin'}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-between px-6 py-4 border-t border-[#2d2d2f] bg-[#18181a]/50">
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 text-sm font-medium text-white bg-[#2d2d2f] rounded-lg disabled:opacity-30 hover:bg-[#3d3d3f] transition-colors"
+                          >
+                            Previous
+                          </button>
+                          <span className="text-sm text-gray-400">
+                            Page <span className="font-semibold text-white">{currentPage}</span> of <span className="font-semibold text-white">{totalPages}</span>
+                          </span>
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                            className="px-4 py-2 text-sm font-medium text-white bg-[#2d2d2f] rounded-lg disabled:opacity-30 hover:bg-[#3d3d3f] transition-colors"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
             </>
           )}
 
-          {/* ----- Edit Modal ----- */}
           {editingModel && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
