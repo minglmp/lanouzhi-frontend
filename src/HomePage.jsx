@@ -26,7 +26,11 @@ const HomePage = () => {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newPrice, setNewPrice] = useState('');
-  const [newImages, setNewImages] = useState([]);
+  
+  // 🌟 แยกระหว่าง "ไฟล์จริง" ที่จะส่งไปหลังบ้าน กับ "รูปลิงก์ชั่วคราว" สำหรับพรีวิว
+  const [newImageFiles, setNewImageFiles] = useState([]); 
+  const [newImagePreviews, setNewImagePreviews] = useState([]); 
+  
   const [newCategory, setNewCategory] = useState('Art');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -66,40 +70,43 @@ const HomePage = () => {
     fetchModels();
   }, []);
 
-  // จัดการเมื่อเลือกไฟล์รูปภาพ
+  // 🌟 จัดการเมื่อเลือกไฟล์รูปภาพ (ปรับให้เก็บ File แทน Base64)
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    // จำกัดสูงสุดไม่เกิน 4 รูปต่อโมเดล
-    if (newImages.length + files.length > 4) {
+    if (newImageFiles.length + files.length > 4) {
       alert('You can upload up to 4 images per model.');
       return;
     }
+
+    const validFiles = [];
+    const previews = [];
 
     files.forEach((file) => {
       if (file.size > 1024 * 1024) {
         alert(`File "${file.name}" exceeds 1MB.`);
         return;
       }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewImages((prev) => [...prev, reader.result]);
-      };
-      reader.readAsDataURL(file);
+      validFiles.push(file);
+      // สร้าง URL จำลองเพื่อให้หน้าเว็บแสดงรูปพรีวิวได้ทันที
+      previews.push(URL.createObjectURL(file)); 
     });
+
+    setNewImageFiles((prev) => [...prev, ...validFiles]);
+    setNewImagePreviews((prev) => [...prev, ...previews]);
   };
 
   // ลบรูปภาพที่เลือกไว้
   const handleRemoveImage = (indexToRemove) => {
-    setNewImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+    setNewImageFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+    setNewImagePreviews((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // ส่งข้อมูลอัปโหลด
+  // 🌟 ส่งข้อมูลอัปโหลด (ทำงาน 2 สเตป: ขึ้น R2 -> บันทึก D1)
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
-    if (newImages.length === 0) {
+    if (newImageFiles.length === 0) {
       setUploadError('Please select at least one image before uploading.');
       return;
     }
@@ -108,6 +115,28 @@ const HomePage = () => {
     setUploadError('');
 
     try {
+      const uploadedUrls = [];
+
+      // สเตปที่ 1: อัปโหลดรูปทีละไฟล์ไปที่ R2
+      for (const file of newImageFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const uploadRes = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/upload', {
+          method: 'POST',
+          body: formData // ไม่ต้องใส่ Content-Type เดี๋ยวเบราว์เซอร์จัดการให้เอง
+        });
+
+        if (!uploadRes.ok) throw new Error('Failed to upload image to Cloudflare R2');
+        
+        const uploadData = await uploadRes.json();
+        
+        // นำชื่อไฟล์มาต่อกับ Public URL ของคุณ
+        const r2PublicUrl = `https://pub-3e184cc2bc334d1fbf04415454aa22ef.r2.dev/${uploadData.fileName}`;
+        uploadedUrls.push(r2PublicUrl);
+      }
+
+      // สเตปที่ 2: นำ URL ที่ได้ไปบันทึกลง Database D1
       const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/models', {
         method: 'POST',
         headers: {
@@ -118,7 +147,7 @@ const HomePage = () => {
           title: newTitle,
           description: newDescription,
           price: Number(newPrice) || 0,
-          images: newImages, // ส่งเป็น Array
+          images: uploadedUrls, // 👈 ส่งเป็น Array ของ Public URL แทน
           category: newCategory
         })
       });
@@ -131,7 +160,8 @@ const HomePage = () => {
       setNewTitle('');
       setNewDescription('');
       setNewPrice('');
-      setNewImages([]);
+      setNewImageFiles([]);
+      setNewImagePreviews([]);
       fetchModels();
     } catch (err) {
       setUploadError(err.message);
@@ -331,7 +361,7 @@ const HomePage = () => {
                       <button 
                         onClick={(e) => { e.stopPropagation(); navigate(`/model/${model.id}`); }} 
                         className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl transition-colors shadow-sm hover:shadow-md flex justify-center items-center gap-2"
->
+                      >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                           View Details 
                       </button>
@@ -368,7 +398,7 @@ const HomePage = () => {
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all outline-none"
                 />
               </div>
-              {/* 🌟 แทรกช่อง Description ตรงนี้เลยครับ 🌟 */}
+              
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Description (Optional)</label>
                 <textarea
@@ -379,7 +409,6 @@ const HomePage = () => {
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all outline-none resize-none"
                 ></textarea>
               </div>
-              {/* ======================================= */}
 
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Price (LAK)</label>
@@ -401,15 +430,15 @@ const HomePage = () => {
                 <input
                   type="file"
                   accept="image/*"
-                  multiple // อนุญาตให้เลือกพร้อมกันได้หลายไฟล์
+                  multiple 
                   onChange={handleImageChange}
                   className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 transition-all outline-none cursor-pointer"
                 />
 
-                {/* แสดงพรีวิวแบบตารางหลายรูป */}
-                {newImages.length > 0 && (
+                {/* 🌟 แสดงพรีวิวด้วย URL จำลอง 🌟 */}
+                {newImagePreviews.length > 0 && (
                   <div className="grid grid-cols-2 gap-2 mt-4">
-                    {newImages.map((img, index) => (
+                    {newImagePreviews.map((img, index) => (
                       <div key={index} className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
                         <img src={img} alt={`Preview ${index}`} className="w-full h-full object-cover" />
                         <button
@@ -441,16 +470,20 @@ const HomePage = () => {
               <div className="flex gap-3 mt-8">
                 <button
                   type="button"
-                  onClick={() => setIsUploadModalOpen(false)}
+                  onClick={() => {
+                    setIsUploadModalOpen(false);
+                    setNewImageFiles([]);
+                    setNewImagePreviews([]);
+                  }}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3.5 rounded-xl transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isUploading || newImages.length === 0}
+                  disabled={isUploading || newImageFiles.length === 0}
                   className={`flex-1 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md ${
-                    (isUploading || newImages.length === 0)
+                    (isUploading || newImageFiles.length === 0)
                       ? 'bg-gray-600 text-gray-400 cursor-not-allowed shadow-none'
                       : 'bg-gray-900 hover:bg-black hover:shadow-lg'
                   }`}
