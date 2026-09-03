@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoImg from './assets/logo2.jpeg';
+import { useNavigate, useLocation } from 'react-router-dom'; // 👈 เพิ่ม useLocation
 
 const CATEGORIES = ['All', 'New', 'Art', 'Gadgets', 'Toys'];
 
@@ -16,6 +17,14 @@ const parseImages = (imageUrlField) => {
 
 const ProfilePage = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // 👈 ดึงข้อมูลที่ส่งมาจากหน้า Home
+
+  // ถ้าหน้า Home ส่งคำสั่ง openOrders มา ให้สลับแท็บไปที่ 'orders' ทันที
+  useEffect(() => {
+    if (location.state?.openOrders) {
+      setCurrentView('orders');
+    }
+  }, [location]);
 
   // ================= State Management =================
   const [currentView, setCurrentView] = useState('profile');

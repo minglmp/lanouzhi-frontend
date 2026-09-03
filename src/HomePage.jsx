@@ -21,13 +21,15 @@ const HomePage = () => {
   const [models, setModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 🌟 State สำหรับเก็บข้อมูลออเดอร์เพื่อใช้นับแจ้งเตือน
+  const [orders, setOrders] = useState([]);
+
   // States สำหรับ Upload Modal
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newPrice, setNewPrice] = useState('');
   
-  // 🌟 แยกระหว่าง "ไฟล์จริง" ที่จะส่งไปหลังบ้าน กับ "รูปลิงก์ชั่วคราว" สำหรับพรีวิว
   const [newImageFiles, setNewImageFiles] = useState([]); 
   const [newImagePreviews, setNewImagePreviews] = useState([]); 
   
@@ -66,11 +68,31 @@ const HomePage = () => {
     }
   };
 
+  // 🌟 ฟังก์ชันดึงออเดอร์ (ดึงเฉพาะแอดมิน)
+  const fetchAdminOrders = async () => {
+    if (currentUserRole !== 'admin' || !token) return;
+    try {
+      const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/orders', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(data);
+      }
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+    }
+  };
+
   useEffect(() => {
     fetchModels();
+    fetchAdminOrders(); // เรียกใช้อัตโนมัติเมื่อโหลดหน้า
   }, []);
 
-  // 🌟 จัดการเมื่อเลือกไฟล์รูปภาพ (ปรับให้เก็บ File แทน Base64)
+  // 🌟 นับจำนวนออเดอร์ที่สถานะ pending
+  const pendingOrdersCount = orders.filter(order => order.status === 'pending').length;
+
+  // จัดการเมื่อเลือกไฟล์รูปภาพ
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -89,7 +111,6 @@ const HomePage = () => {
         return;
       }
       validFiles.push(file);
-      // สร้าง URL จำลองเพื่อให้หน้าเว็บแสดงรูปพรีวิวได้ทันที
       previews.push(URL.createObjectURL(file)); 
     });
 
@@ -103,7 +124,7 @@ const HomePage = () => {
     setNewImagePreviews((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // 🌟 ส่งข้อมูลอัปโหลด (ทำงาน 2 สเตป: ขึ้น R2 -> บันทึก D1)
+  // ส่งข้อมูลอัปโหลดไปที่ R2
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
     if (newImageFiles.length === 0) {
@@ -117,26 +138,22 @@ const HomePage = () => {
     try {
       const uploadedUrls = [];
 
-      // สเตปที่ 1: อัปโหลดรูปทีละไฟล์ไปที่ R2
       for (const file of newImageFiles) {
         const formData = new FormData();
         formData.append('file', file);
 
         const uploadRes = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/upload', {
           method: 'POST',
-          body: formData // ไม่ต้องใส่ Content-Type เดี๋ยวเบราว์เซอร์จัดการให้เอง
+          body: formData 
         });
 
         if (!uploadRes.ok) throw new Error('Failed to upload image to Cloudflare R2');
         
         const uploadData = await uploadRes.json();
-        
-        // นำชื่อไฟล์มาต่อกับ Public URL ของคุณ
         const r2PublicUrl = `https://pub-3e184cc2bc334d1fbf04415454aa22ef.r2.dev/${uploadData.fileName}`;
         uploadedUrls.push(r2PublicUrl);
       }
 
-      // สเตปที่ 2: นำ URL ที่ได้ไปบันทึกลง Database D1
       const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/models', {
         method: 'POST',
         headers: {
@@ -147,7 +164,7 @@ const HomePage = () => {
           title: newTitle,
           description: newDescription,
           price: Number(newPrice) || 0,
-          images: uploadedUrls, // 👈 ส่งเป็น Array ของ Public URL แทน
+          images: uploadedUrls, 
           category: newCategory
         })
       });
@@ -155,7 +172,6 @@ const HomePage = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || data.error_detail || 'Upload failed');
 
-      // เคลียร์ค่าทั้งหมดหลังอัปโหลดสำเร็จ
       setIsUploadModalOpen(false);
       setNewTitle('');
       setNewDescription('');
@@ -226,15 +242,37 @@ const HomePage = () => {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
             Home
           </button>
+          
+          {/* ปุ่ม My Profile */}
           {isLoggedIn && (
             <button
-              onClick={() => navigate('/profile')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors mt-4"
+              onClick={() => navigate('/profile', { state: { openOrders: true } })}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors mt-2"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               My Profile
             </button>
           )}
+
+          {/* 🌟 ปุ่ม Manage Orders (แสดงผลเฉพาะ Admin) 🌟 */}
+          {currentUserRole === 'admin' && (
+            <button 
+              onClick={() => navigate('/profile')} // กดแล้วพาไปหน้า Profile (แอดมินสามารถกดแท็บต่อได้)
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-medium text-sm transition-colors text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50"
+            >
+              <div className="flex items-center gap-3">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                Manage Orders
+              </div>
+              {/* โชว์ป้ายแดงเมื่อมีออเดอร์รอตรวจ */}
+              {pendingOrdersCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                  {pendingOrdersCount}
+                </span>
+              )}
+            </button>
+          )}
+
         </nav>
         <div className="mt-auto p-4 border-t border-[#2d2d2f]">
           <div className="flex items-center gap-4 mb-4 text-gray-500">
