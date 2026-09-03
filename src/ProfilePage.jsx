@@ -4,7 +4,6 @@ import logoImg from './assets/logo2.jpeg';
 
 const CATEGORIES = ['All', 'New', 'Art', 'Gadgets', 'Toys'];
 
-// ฟังก์ชันแปลงข้อมูลรูปภาพ
 const parseImages = (imageUrlField) => {
   try {
     const parsed = JSON.parse(imageUrlField);
@@ -18,16 +17,12 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ================= State Management =================
   const [currentView, setCurrentView] = useState('profile');
-
   const [myModels, setMyModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
-  // State สำหรับระบบแก้ไขผลงาน
   const [editingModel, setEditingModel] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -37,10 +32,8 @@ const ProfilePage = () => {
   const [existingImages, setExistingImages] = useState([]); 
   const [newImageFiles, setNewImageFiles] = useState([]);
   const [newImagePreviews, setNewImagePreviews] = useState([]);
-
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // ================= Authentication =================
   const token = localStorage.getItem('maker_token');
   let currentUser = null;
   let currentUserRole = null;
@@ -55,14 +48,10 @@ const ProfilePage = () => {
     }
   }
 
-  // ถ้าหน้า Home ส่งคำสั่ง openOrders มา ให้สลับแท็บไปที่ 'orders' ทันที
   useEffect(() => {
-    if (location.state?.openOrders) {
-      setCurrentView('orders');
-    }
+    if (location.state?.openOrders) setCurrentView('orders');
   }, [location]);
 
-  // ================= API Functions =================
   const fetchMyModels = useCallback(async () => {
     try {
       const response = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/models');
@@ -82,7 +71,6 @@ const ProfilePage = () => {
 
   const fetchAdminOrders = useCallback(async () => {
     if (currentUserRole !== 'admin' || !token) return;
-
     setIsLoadingOrders(true);
     try {
       const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/orders', {
@@ -108,10 +96,8 @@ const ProfilePage = () => {
     }
   }, [navigate, token, fetchMyModels, fetchAdminOrders]);
 
-  // คำนวณจำนวนออเดอร์ที่รอดำเนินการ (Pending)
   const pendingOrdersCount = orders.filter(order => order.status === 'pending').length;
 
-  // ================= Event Handlers =================
   const handleLogout = () => {
     localStorage.removeItem('maker_token');
     navigate('/');
@@ -124,9 +110,7 @@ const ProfilePage = () => {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        fetchMyModels();
-      }
+      if (res.ok) fetchMyModels();
     } catch (err) {
       alert('Server error occurred.');
     }
@@ -152,7 +136,6 @@ const ProfilePage = () => {
     }
   };
 
-  // ----- Edit Modal Handlers -----
   const handleEditClick = (model) => {
     setEditingModel(model);
     setEditTitle(model.title);
@@ -273,7 +256,7 @@ const ProfilePage = () => {
           {currentUserRole === 'admin' && (
             <button 
               onClick={() => setCurrentView('orders')} 
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors ${
                 currentView === 'orders' ? 'bg-[#2d2d2f] text-white' : 'text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50'
               }`}
             >
@@ -315,76 +298,78 @@ const ProfilePage = () => {
                 <div>
                   <h1 className="text-3xl font-bold text-white mb-2">{currentUser}</h1>
                   <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${currentUserRole === 'admin' ? 'bg-red-500/20 text-red-400' : 'bg-gray-700 text-gray-300'}`}>
-                      {currentUserRole === 'admin' ? 'Admin' : 'Creator'}
+                    {/* 🌟 เช็กสถานะป้าย Role 🌟 */}
+                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${
+                      currentUserRole === 'admin' ? 'bg-red-500/20 text-red-400' : 
+                      currentUserRole === 'creator' ? 'bg-blue-500/20 text-blue-400' : 
+                      'bg-gray-700 text-gray-300'
+                    }`}>
+                      {currentUserRole === 'admin' ? 'Admin' : currentUserRole === 'creator' ? 'Creator' : 'User'}
                     </span>
                     <span className="text-gray-400 text-sm">Joined recently</span>
                   </div>
                 </div>
               </div>
 
-              {/* All Models Section */}
-              <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4">
-                {currentUserRole === 'admin' ? 'All Models in System (Admin View)' : 'My Uploaded Models'} ({myModels.length})
-              </h2>
+              {/* 🌟 ซ่อนส่วน My Models ถ้าเป็นแค่ User ธรรมดา 🌟 */}
+              {(currentUserRole === 'admin' || currentUserRole === 'creator') ? (
+                <>
+                  <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4">
+                    {currentUserRole === 'admin' ? 'All Models in System (Admin View)' : 'My Uploaded Models'} ({myModels.length})
+                  </h2>
 
-              {isLoading ? (
-                <div className="text-center py-12 text-gray-400 animate-pulse">Loading your models...</div>
-              ) : myModels.length === 0 ? (
-                <div className="text-center py-20 bg-[#1c1c1e] rounded-3xl border border-[#2d2d2f]">
-                  <p className="text-lg font-medium text-white mb-2">You haven't uploaded any models yet.</p>
-                  <button onClick={() => navigate('/')} className="mt-4 bg-[#FF7518] hover:bg-orange-600 text-white px-6 py-2 rounded-full text-sm font-bold transition-colors">
-                    Go to Home to Upload
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {myModels.map((model) => (
-                    <div key={model.id} className="group bg-[#1c1c1e] rounded-3xl overflow-hidden border border-[#2d2d2f] shadow-md hover:border-[#444] transition-all duration-300 flex flex-col relative">
-                      
-                      <div className="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleEditClick(model); }}
-                          className="bg-black/70 hover:bg-blue-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(model.id); }}
-                          className="bg-black/70 hover:bg-red-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      </div>
-
-                      <div className="relative aspect-[4/3] overflow-hidden bg-black">
-                        <img 
-                          src={parseImages(model.image_url)[0]} 
-                          alt={model.title} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                          onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80' }} 
-                        />
-                        {parseImages(model.image_url).length > 1 && (
-                          <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md border border-gray-700 shadow-sm z-10 pointer-events-none">
-                            +{parseImages(model.image_url).length - 1} photos
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="p-4">
-                        <h3 className="text-white font-semibold text-lg truncate mb-1">{model.title}</h3>
-                        <p className="text-xs text-gray-500">
-                          {model.author === currentUser ? 'Uploaded by you' : `Uploaded by @${model.author}`}
-                        </p>
-                      </div>
+                  {isLoading ? (
+                    <div className="text-center py-12 text-gray-400 animate-pulse">Loading your models...</div>
+                  ) : myModels.length === 0 ? (
+                    <div className="text-center py-20 bg-[#1c1c1e] rounded-3xl border border-[#2d2d2f]">
+                      <p className="text-lg font-medium text-white mb-2">You haven't uploaded any models yet.</p>
+                      <button onClick={() => navigate('/')} className="mt-4 bg-[#FF7518] hover:bg-orange-600 text-white px-6 py-2 rounded-full text-sm font-bold transition-colors">
+                        Go to Home to Upload
+                      </button>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {myModels.map((model) => (
+                        <div key={model.id} className="group bg-[#1c1c1e] rounded-3xl overflow-hidden border border-[#2d2d2f] shadow-md hover:border-[#444] transition-all duration-300 flex flex-col relative">
+                          <div className="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <button onClick={(e) => { e.stopPropagation(); handleEditClick(model); }} className="bg-black/70 hover:bg-blue-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDelete(model.id); }} className="bg-black/70 hover:bg-red-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                          </div>
+                          <div className="relative aspect-[4/3] overflow-hidden bg-black">
+                            <img src={parseImages(model.image_url)[0]} alt={model.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80' }} />
+                            {parseImages(model.image_url).length > 1 && (
+                              <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md border border-gray-700 shadow-sm z-10 pointer-events-none">
+                                +{parseImages(model.image_url).length - 1} photos
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-4">
+                            <h3 className="text-white font-semibold text-lg truncate mb-1">{model.title}</h3>
+                            <p className="text-xs text-gray-500">{model.author === currentUser ? 'Uploaded by you' : `Uploaded by @${model.author}`}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-20 bg-[#1c1c1e] rounded-3xl border border-[#2d2d2f] mt-8">
+                  <p className="text-lg font-medium text-white mb-2">Welcome to Lanouzhi.lab!</p>
+                  <p className="text-sm opacity-80 text-gray-400 mb-6">Explore the homepage to find and purchase amazing 3D models.</p>
+                  <button onClick={() => navigate('/')} className="bg-[#FF7518] hover:bg-orange-600 text-white px-6 py-2 rounded-full text-sm font-bold transition-colors">
+                    Explore Models
+                  </button>
                 </div>
               )}
             </>
           ) : (
             /* ================= หน้าจอ Manage Orders ================= */
             <>
+              {/* ตารางออเดอร์ (แอดมินเท่านั้น) คงเดิม... */}
               <div className="mb-12">
                 <h2 className="text-2xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4 flex items-center gap-2">
                   <svg className="w-7 h-7 text-[#FF7518]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
@@ -420,7 +405,6 @@ const ProfilePage = () => {
                             <tr key={order.id} className="border-b border-[#2d2d2f] hover:bg-black/20 transition-colors">
                               <td className="px-6 py-4 font-medium text-white">@{order.buyer_username}</td>
                               <td className="px-6 py-4 truncate max-w-[150px]">{order.model_title || order.model_id}</td>
-                              
                               <td className="px-6 py-4 text-center">
                                 <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
                                   order.status === 'approved' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
@@ -430,7 +414,6 @@ const ProfilePage = () => {
                                   {order.status.toUpperCase()}
                                 </span>
                               </td>
-                              
                               <td className="px-6 py-4 flex justify-center gap-2">
                                 {order.status === 'pending' ? (
                                   <>
@@ -456,15 +439,7 @@ const ProfilePage = () => {
           {editingModel && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
-                <button 
-                  onClick={() => {
-                    setEditingModel(null);
-                    setExistingImages([]);
-                    setNewImageFiles([]);
-                    setNewImagePreviews([]);
-                  }} 
-                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors z-10"
-                >
+                <button onClick={() => { setEditingModel(null); setExistingImages([]); setNewImageFiles([]); setNewImagePreviews([]); }} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors z-10">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
                 <div className="p-8 max-h-[90vh] overflow-y-auto hide-scrollbar">
@@ -472,60 +447,34 @@ const ProfilePage = () => {
                   <form onSubmit={handleUpdateSubmit} className="space-y-5">
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Name</label>
-                      <input
-                        type="text" required value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
-                      />
+                      <input type="text" required value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none" />
                     </div>
-                    
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1.5">Description</label>
-                      <textarea
-                        rows="3"
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none resize-none"
-                      ></textarea>
+                      <textarea rows="3" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none resize-none"></textarea>
                     </div>
-                    
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Images (Up to 4)</label>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        multiple
-                        onChange={handleEditImageChange} 
-                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 cursor-pointer outline-none" 
-                      />
-                      
+                      <input type="file" accept="image/*" multiple onChange={handleEditImageChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 cursor-pointer outline-none" />
                       {existingImages.length > 0 && (
                         <div className="grid grid-cols-2 gap-2 mt-4">
                           {existingImages.map((img, index) => (
                             <div key={`exist-${index}`} className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
                               <img src={img} alt={`Existing ${index}`} className="w-full h-full object-cover" />
-                              <button 
-                                type="button"
-                                onClick={() => handleRemoveExistingImage(index)} 
-                                className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1 hover:bg-red-500 transition-colors"
-                              >
+                              <button type="button" onClick={() => handleRemoveExistingImage(index)} className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1 hover:bg-red-500 transition-colors">
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                               </button>
                             </div>
                           ))}
                         </div>
                       )}
-
                       {newImagePreviews.length > 0 && (
                         <div className="grid grid-cols-2 gap-2 mt-2">
                           {newImagePreviews.map((img, index) => (
                             <div key={`new-${index}`} className="relative aspect-video rounded-xl overflow-hidden bg-orange-50 border border-orange-200">
                               <div className="absolute top-0 left-0 bg-[#FF7518] text-white text-[10px] font-bold px-2 py-0.5 rounded-br-lg z-10 shadow-sm">NEW</div>
                               <img src={img} alt={`New Preview ${index}`} className="w-full h-full object-cover" />
-                              <button 
-                                type="button"
-                                onClick={() => handleRemoveNewImage(index)} 
-                                className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1 hover:bg-red-500 transition-colors"
-                              >
+                              <button type="button" onClick={() => handleRemoveNewImage(index)} className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1 hover:bg-red-500 transition-colors">
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                               </button>
                             </div>
@@ -533,34 +482,21 @@ const ProfilePage = () => {
                         </div>
                       )}
                     </div>
-
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1.5">Category</label>
-                      <select
-                        value={editCategory} onChange={(e) => setEditCategory(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
-                      >
+                      <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none">
                         {CATEGORIES.filter(c => c !== 'All' && c !== 'New').map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
-
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1.5">Price (LAK)</label>
                       <div className="relative">
-                        <input
-                          type="number"
-                          min="0"
-                          value={editPrice}
-                          onChange={(e) => setEditPrice(e.target.value)}
-                          placeholder="e.g., 50000 (Leave 0 for Free)"
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
-                        />
+                        <input type="number" min="0" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-12 py-3 text-sm outline-none" />
                         <span className="absolute right-4 top-3 text-gray-400 text-sm font-bold">₭</span>
                       </div>
                     </div>
-                    
                     <button type="submit" disabled={isUpdating || (existingImages.length === 0 && newImageFiles.length === 0)} className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md disabled:bg-gray-400 mt-4">
-                      {isUpdating ? 'Saving Changes...' : 'Save Changes'}
+                      {isUpdating ? 'Saving...' : 'Save Changes'}
                     </button>
                   </form>
                 </div>

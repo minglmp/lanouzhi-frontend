@@ -4,7 +4,6 @@ import logoImg from './assets/logo2.jpeg';
 
 const CATEGORIES = ['All', 'New', 'Art', 'Gadgets', 'Toys'];
 
-// ฟังก์ชันสำหรับแปลงข้อมูลรูปภาพ
 const parseImages = (imageUrlField) => {
   try {
     const parsed = JSON.parse(imageUrlField);
@@ -21,23 +20,18 @@ const HomePage = () => {
   const [models, setModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // State สำหรับเก็บข้อมูลออเดอร์เพื่อใช้นับแจ้งเตือน
   const [orders, setOrders] = useState([]);
 
-  // States สำหรับ Upload Modal
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newPrice, setNewPrice] = useState('');
-  
   const [newImageFiles, setNewImageFiles] = useState([]); 
   const [newImagePreviews, setNewImagePreviews] = useState([]); 
-  
   const [newCategory, setNewCategory] = useState('Art');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
-  // ตรวจสอบการล็อกอิน
   const token = localStorage.getItem('maker_token');
   const isLoggedIn = !!token;
 
@@ -68,7 +62,6 @@ const HomePage = () => {
     }
   };
 
-  // ฟังก์ชันดึงออเดอร์ (ดึงเฉพาะแอดมิน)
   const fetchAdminOrders = async () => {
     if (currentUserRole !== 'admin' || !token) return;
     try {
@@ -86,13 +79,11 @@ const HomePage = () => {
 
   useEffect(() => {
     fetchModels();
-    fetchAdminOrders(); // เรียกใช้อัตโนมัติเมื่อโหลดหน้า
+    fetchAdminOrders();
   }, []);
 
-  // นับจำนวนออเดอร์ที่สถานะ pending
   const pendingOrdersCount = orders.filter(order => order.status === 'pending').length;
 
-  // จัดการเมื่อเลือกไฟล์รูปภาพ
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -118,13 +109,11 @@ const HomePage = () => {
     setNewImagePreviews((prev) => [...prev, ...previews]);
   };
 
-  // ลบรูปภาพที่เลือกไว้
   const handleRemoveImage = (indexToRemove) => {
     setNewImageFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
     setNewImagePreviews((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // ส่งข้อมูลอัปโหลดไปที่ R2
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
     if (newImageFiles.length === 0) {
@@ -191,7 +180,6 @@ const HomePage = () => {
     window.location.reload();
   };
 
-  // ระบบค้นหาและกรองหมวดหมู่
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredModels = models.filter((model) => {
@@ -201,7 +189,6 @@ const HomePage = () => {
     const matchSearch = matchTitle || matchAuthor;
 
     let matchCategory = true;
-
     if (activeTab === 'All') {
       matchCategory = true;
     } else if (activeTab === 'New') {
@@ -209,7 +196,6 @@ const HomePage = () => {
         const now = new Date();
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(now.getMonth() - 1);
-
         const modelDate = new Date(model.created_at.replace(' ', 'T') + 'Z');
         matchCategory = modelDate >= oneMonthAgo;
       } else {
@@ -233,34 +219,24 @@ const HomePage = () => {
         </div>
 
         <nav className="flex-1 px-3 py-2 space-y-1">
-          {/* ปุ่ม Home (สถานะ Active) */}
           <button className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#2d2d2f] text-white rounded-lg font-medium text-sm transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
             Home
           </button>
           
-          {/* ปุ่ม My Profile (สถานะ Inactive) */}
           {isLoggedIn && (
-            <button
-              onClick={() => navigate('/profile')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors mt-2"
-            >
+            <button onClick={() => navigate('/profile')} className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors mt-2">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               My Profile
             </button>
           )}
 
-          {/* ปุ่ม Manage Orders (โชว์เฉพาะ Admin และสถานะ Inactive) */}
           {currentUserRole === 'admin' && (
-            <button 
-              onClick={() => navigate('/profile', { state: { openOrders: true } })} 
-              className="w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50"
-            >
+            <button onClick={() => navigate('/profile', { state: { openOrders: true } })} className="w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50">
               <div className="flex items-center gap-3">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                 Manage Orders
               </div>
-              {/* ป้ายแจ้งเตือนสีแดง */}
               {pendingOrdersCount > 0 && (
                 <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
                   {pendingOrdersCount}
@@ -294,8 +270,6 @@ const HomePage = () => {
 
       {/* ================= 2. พื้นที่เนื้อหาหลัก ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
-
-        {/* ================= Top Navbar ================= */}
         <nav className="bg-[#121212] sticky top-0 z-40 px-6 py-4 flex items-center justify-between gap-6">
           <div className="flex md:hidden items-center gap-2 cursor-pointer">
             <img src={logoImg} alt="Logo" className="w-8 h-8 object-contain rounded-md" />
@@ -316,18 +290,18 @@ const HomePage = () => {
           <div className="flex items-center gap-4">
             {isLoggedIn ? (
               <>
-                <button onClick={() => setIsUploadModalOpen(true)} className="hidden sm:block bg-[#262628] hover:bg-[#333] text-white px-5 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700">
-                  + Upload
-                </button>
+                {/* 🌟 ซ่อนปุ่ม Upload ถ้าเป็นแค่ User ธรรมดา 🌟 */}
+                {(currentUserRole === 'admin' || currentUserRole === 'creator') && (
+                  <button onClick={() => setIsUploadModalOpen(true)} className="hidden sm:block bg-[#262628] hover:bg-[#333] text-white px-5 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700">
+                    + Upload
+                  </button>
+                )}
                 <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 text-sm font-medium transition-colors">
                   Logout
                 </button>
               </>
             ) : (
-              <button
-                onClick={() => navigate('/auth')}
-                className="bg-[#262628] hover:bg-[#333] text-white px-6 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700 shadow-sm"
-              >
+              <button onClick={() => navigate('/auth')} className="bg-[#262628] hover:bg-[#333] text-white px-6 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700 shadow-sm">
                 Log In
               </button>
             )}
@@ -342,9 +316,7 @@ const HomePage = () => {
                 key={category}
                 onClick={() => setActiveTab(category)}
                 className={`whitespace-nowrap px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                  activeTab === category
-                    ? 'bg-[#FF7518] text-white shadow-md'
-                    : 'bg-[#1E1E1E] text-gray-400 hover:bg-[#27272A] hover:text-gray-200'
+                  activeTab === category ? 'bg-[#FF7518] text-white shadow-md' : 'bg-[#1E1E1E] text-gray-400 hover:bg-[#27272A] hover:text-gray-200'
                 }`}
               >
                 {category}
@@ -362,27 +334,15 @@ const HomePage = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredModels.map((model) => (
-                <div
-                  key={model.id}
-                  onClick={() => navigate(`/model/${model.id}`)}
-                  className="group bg-gray-900 rounded-3xl overflow-hidden border border-gray-800 shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col relative cursor-pointer"
-                >
+                <div key={model.id} onClick={() => navigate(`/model/${model.id}`)} className="group bg-gray-900 rounded-3xl overflow-hidden border border-gray-800 shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col relative cursor-pointer">
                   <div className="relative aspect-[4/3] overflow-hidden bg-gray-800">
-                    <img
-                      src={parseImages(model.image_url)[0]}
-                      alt={model.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80' }}
-                    />
-
-                    {/* ป้ายกำกับ: โชว์เฉพาะตอนที่มีมากกว่า 1 รูป */}
+                    <img src={parseImages(model.image_url)[0]} alt={model.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80' }} />
                     {parseImages(model.image_url).length > 1 && (
                       <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md border border-gray-700 shadow-sm z-10">
                         +{parseImages(model.image_url).length - 1} photos
                       </div>
                     )}
                   </div>
-
                   <div className="p-4 flex-1 flex flex-col">
                     <h3 className="text-white font-semibold text-lg truncate mb-1">{model.title}</h3>
                     <div className="flex items-center gap-2 mb-4">
@@ -391,12 +351,8 @@ const HomePage = () => {
                       </div>
                       <span className="text-sm text-gray-400 truncate">{model.author}</span>
                     </div>
-
                     <div className="mt-auto">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); navigate(`/model/${model.id}`); }} 
-                        className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl transition-colors shadow-sm hover:shadow-md flex justify-center items-center gap-2"
-                      >
+                      <button onClick={(e) => { e.stopPropagation(); navigate(`/model/${model.id}`); }} className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl transition-colors shadow-sm hover:shadow-md flex justify-center items-center gap-2">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                           View Details 
                       </button>
@@ -414,73 +370,32 @@ const HomePage = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity">
           <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl relative animate-in fade-in zoom-in duration-200">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Upload New Model 🎨</h2>
-
-            {uploadError && (
-              <div className="mb-6 p-4 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">
-                {uploadError}
-              </div>
-            )}
-
+            {uploadError && <div className="mb-6 p-4 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">{uploadError}</div>}
             <form onSubmit={handleUploadSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Name</label>
-                <input
-                  type="text"
-                  required
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="e.g., Articulated Dragon"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all outline-none"
-                />
+                <input type="text" required value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Articulated Dragon" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none" />
               </div>
-              
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Description (Optional)</label>
-                <textarea
-                  rows="3"
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Tell us about this model..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all outline-none resize-none"
-                ></textarea>
+                <textarea rows="3" value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Tell us about this model..." className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none resize-none"></textarea>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Price (LAK)</label>
                 <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    value={newPrice}
-                    onChange={(e) => setNewPrice(e.target.value)}
-                    placeholder="e.g., 50000 (Leave 0 for Free)"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 outline-none"
-                  />
+                  <input type="number" min="0" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} placeholder="e.g., 50000 (Leave 0 for Free)" className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-12 py-3 text-sm outline-none" />
                   <span className="absolute right-4 top-3 text-gray-400 text-sm font-bold">₭</span>
                 </div>
               </div>
-              
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Images (Up to 4)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple 
-                  onChange={handleImageChange}
-                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 transition-all outline-none cursor-pointer"
-                />
-
-                {/* 🌟 แสดงพรีวิวด้วย URL จำลอง 🌟 */}
+                <input type="file" accept="image/*" multiple onChange={handleImageChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 cursor-pointer outline-none" />
                 {newImagePreviews.length > 0 && (
                   <div className="grid grid-cols-2 gap-2 mt-4">
                     {newImagePreviews.map((img, index) => (
                       <div key={index} className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
                         <img src={img} alt={`Preview ${index}`} className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveImage(index)}
-                          className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1 hover:bg-red-500 transition-colors"
-                        >
+                        <button type="button" onClick={() => handleRemoveImage(index)} className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1 hover:bg-red-500 transition-colors">
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                       </div>
@@ -488,41 +403,17 @@ const HomePage = () => {
                   </div>
                 )}
               </div>
-              
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Category</label>
-                <select
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all outline-none"
-                >
+                <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none">
                   {CATEGORIES.filter(c => c !== 'All' && c !== 'New').map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
-
               <div className="flex gap-3 mt-8">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsUploadModalOpen(false);
-                    setNewImageFiles([]);
-                    setNewImagePreviews([]);
-                  }}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3.5 rounded-xl transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUploading || newImageFiles.length === 0}
-                  className={`flex-1 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md ${
-                    (isUploading || newImageFiles.length === 0)
-                      ? 'bg-gray-600 text-gray-400 cursor-not-allowed shadow-none'
-                      : 'bg-gray-900 hover:bg-black hover:shadow-lg'
-                  }`}
-                >
+                <button type="button" onClick={() => { setIsUploadModalOpen(false); setNewImageFiles([]); setNewImagePreviews([]); }} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3.5 rounded-xl transition-all">Cancel</button>
+                <button type="submit" disabled={isUploading || newImageFiles.length === 0} className={`flex-1 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md ${ (isUploading || newImageFiles.length === 0) ? 'bg-gray-600 text-gray-400 cursor-not-allowed shadow-none' : 'bg-gray-900 hover:bg-black hover:shadow-lg' }`}>
                   {isUploading ? 'Uploading...' : 'Upload Now'}
                 </button>
               </div>
