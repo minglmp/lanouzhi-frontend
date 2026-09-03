@@ -19,15 +19,16 @@ const HomePage = () => {
 
   const [models, setModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [orders, setOrders] = useState([]);
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newPrice, setNewPrice] = useState('');
+  
   const [newImageFiles, setNewImageFiles] = useState([]); 
   const [newImagePreviews, setNewImagePreviews] = useState([]); 
+  
   const [newCategory, setNewCategory] = useState('Art');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -62,8 +63,9 @@ const HomePage = () => {
     }
   };
 
-  const fetchAdminOrders = async () => {
-    if (currentUserRole !== 'admin' || !token) return;
+  // 🌟 ปลดล็อก: ดึงออเดอร์สำหรับทุกคนที่ล็อกอิน (แอดมินดึงทั้งหมด ลูกค้าดึงเฉพาะของตัวเอง)
+  const fetchOrders = async () => {
+    if (!token) return;
     try {
       const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/orders', {
         headers: { Authorization: `Bearer ${token}` },
@@ -79,10 +81,13 @@ const HomePage = () => {
 
   useEffect(() => {
     fetchModels();
-    fetchAdminOrders();
+    fetchOrders(); 
   }, []);
 
-  const pendingOrdersCount = orders.filter(order => order.status === 'pending').length;
+  // 🌟 นับแจ้งเตือน (โชว์ให้เฉพาะ Admin)
+  const pendingOrdersCount = currentUserRole === 'admin' 
+    ? orders.filter(order => order.status === 'pending').length 
+    : 0;
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
@@ -189,6 +194,7 @@ const HomePage = () => {
     const matchSearch = matchTitle || matchAuthor;
 
     let matchCategory = true;
+
     if (activeTab === 'All') {
       matchCategory = true;
     } else if (activeTab === 'New') {
@@ -196,6 +202,7 @@ const HomePage = () => {
         const now = new Date();
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(now.getMonth() - 1);
+
         const modelDate = new Date(model.created_at.replace(' ', 'T') + 'Z');
         matchCategory = modelDate >= oneMonthAgo;
       } else {
@@ -225,24 +232,32 @@ const HomePage = () => {
           </button>
           
           {isLoggedIn && (
-            <button onClick={() => navigate('/profile')} className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors mt-2">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-              My Profile
-            </button>
-          )}
+            <>
+              <button
+                onClick={() => navigate('/profile')}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors mt-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                My Profile
+              </button>
 
-          {currentUserRole === 'admin' && (
-            <button onClick={() => navigate('/profile', { state: { openOrders: true } })} className="w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50">
-              <div className="flex items-center gap-3">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                Manage Orders
-              </div>
-              {pendingOrdersCount > 0 && (
-                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
-                  {pendingOrdersCount}
-                </span>
-              )}
-            </button>
+              {/* 🌟 ปุ่ม Manage Orders / My Purchases (โชว์ให้ทุกคนที่ล็อกอิน) 🌟 */}
+              <button 
+                onClick={() => navigate('/profile', { state: { openOrders: true } })} 
+                className="w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50"
+              >
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                  {currentUserRole === 'admin' ? 'Manage Orders' : 'My Purchases'}
+                </div>
+                {/* 🌟 ป้ายแจ้งเตือนสีแดง (โชว์เฉพาะ Admin) 🌟 */}
+                {currentUserRole === 'admin' && pendingOrdersCount > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                    {pendingOrdersCount}
+                  </span>
+                )}
+              </button>
+            </>
           )}
         </nav>
         
@@ -270,6 +285,7 @@ const HomePage = () => {
 
       {/* ================= 2. พื้นที่เนื้อหาหลัก ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
+
         <nav className="bg-[#121212] sticky top-0 z-40 px-6 py-4 flex items-center justify-between gap-6">
           <div className="flex md:hidden items-center gap-2 cursor-pointer">
             <img src={logoImg} alt="Logo" className="w-8 h-8 object-contain rounded-md" />
@@ -290,7 +306,6 @@ const HomePage = () => {
           <div className="flex items-center gap-4">
             {isLoggedIn ? (
               <>
-                {/* 🌟 ซ่อนปุ่ม Upload ถ้าเป็นแค่ User ธรรมดา 🌟 */}
                 {(currentUserRole === 'admin' || currentUserRole === 'creator') && (
                   <button onClick={() => setIsUploadModalOpen(true)} className="hidden sm:block bg-[#262628] hover:bg-[#333] text-white px-5 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700">
                     + Upload
@@ -316,7 +331,9 @@ const HomePage = () => {
                 key={category}
                 onClick={() => setActiveTab(category)}
                 className={`whitespace-nowrap px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                  activeTab === category ? 'bg-[#FF7518] text-white shadow-md' : 'bg-[#1E1E1E] text-gray-400 hover:bg-[#27272A] hover:text-gray-200'
+                  activeTab === category
+                    ? 'bg-[#FF7518] text-white shadow-md'
+                    : 'bg-[#1E1E1E] text-gray-400 hover:bg-[#27272A] hover:text-gray-200'
                 }`}
               >
                 {category}
@@ -389,7 +406,7 @@ const HomePage = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Images (Up to 4)</label>
-                <input type="file" accept="image/*" multiple onChange={handleImageChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 cursor-pointer outline-none" />
+                <input type="file" accept="image/*" multiple onChange={handleImageChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 transition-all outline-none cursor-pointer" />
                 {newImagePreviews.length > 0 && (
                   <div className="grid grid-cols-2 gap-2 mt-4">
                     {newImagePreviews.map((img, index) => (
@@ -406,9 +423,7 @@ const HomePage = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Category</label>
                 <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none">
-                  {CATEGORIES.filter(c => c !== 'All' && c !== 'New').map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+                  {CATEGORIES.filter(c => c !== 'All' && c !== 'New').map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="flex gap-3 mt-8">
