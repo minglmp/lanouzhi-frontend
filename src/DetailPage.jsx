@@ -244,8 +244,6 @@ const DetailPage = () => {
 
               {/* QR Code สำหรับโอนเงิน */}
               <div className="flex flex-col items-center mb-8"> 
-                <p className="text-white font-medium mb-3 text-sm">Scan QR Code to Pay (BCEL One)</p>
-                
                 {/* กล่องบัญชี */}
                 <div className="mx-auto text-center mb-4 bg-black/40 px-4 py-2.5 rounded-xl border border-[#2d2d2f] w-full max-w-[260px]">
                   <p className="text-gray-400 text-[11px] uppercase tracking-wider mb-1">
@@ -257,7 +255,8 @@ const DetailPage = () => {
                     </p>
                   </div>
                 </div>
-
+                
+                <p className="text-white font-medium mb-3 text-sm">Scan QR Code to Pay (BCEL One)</p>
                 <div className="bg-white p-2 rounded-xl shadow-lg">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg" alt="QR Code" className="w-32 h-32" />
                 </div>

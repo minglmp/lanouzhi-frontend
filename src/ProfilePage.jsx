@@ -18,11 +18,9 @@ const ProfilePage = () => {
   const navigate = useNavigate();
 
   // ================= State Management =================
-  // State สำหรับจัดการผลงาน
   const [myModels, setMyModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // State สำหรับจัดการระบบแอดมิน (Orders)
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
@@ -32,7 +30,12 @@ const ProfilePage = () => {
   const [editDescription, setEditDescription] = useState('');
   const [editPrice, setEditPrice] = useState(0);
   const [editCategory, setEditCategory] = useState('Art');
-  const [editImages, setEditImages] = useState([]);
+  
+  // 🌟 แยกระหว่าง "รูปเดิม" และ "รูปใหม่"
+  const [existingImages, setExistingImages] = useState([]); 
+  const [newImageFiles, setNewImageFiles] = useState([]);
+  const [newImagePreviews, setNewImagePreviews] = useState([]);
+
   const [isUpdating, setIsUpdating] = useState(false);
 
   // ================= Authentication =================
@@ -87,7 +90,6 @@ const ProfilePage = () => {
     }
   }, [currentUserRole, token]);
 
-  // Initial Load
   useEffect(() => {
     if (!token) {
       navigate('/auth');
@@ -146,44 +148,83 @@ const ProfilePage = () => {
     setEditDescription(model.description || '');
     setEditPrice(model.price || 0);
     setEditCategory(model.category || 'Art');
-    setEditImages(parseImages(model.image_url));
+    
+    // โหลดรูปภาพเดิมที่มีอยู่แล้ว
+    setExistingImages(parseImages(model.image_url));
+    setNewImageFiles([]);
+    setNewImagePreviews([]);
   };
 
   const handleEditImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    if (editImages.length + files.length > 4) {
-      alert('You can upload up to 4 images per model.');
+    // นับรวมรูปเก่าและรูปใหม่ ต้องไม่เกิน 4
+    if (existingImages.length + newImageFiles.length + files.length > 4) {
+      alert('You can have up to 4 images per model.');
       return;
     }
+
+    const validFiles = [];
+    const previews = [];
 
     files.forEach((file) => {
       if (file.size > 1024 * 1024) {
         alert(`File "${file.name}" exceeds 1MB.`);
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditImages((prev) => [...prev, reader.result]);
-      };
-      reader.readAsDataURL(file);
+      validFiles.push(file);
+      previews.push(URL.createObjectURL(file));
     });
+
+    setNewImageFiles((prev) => [...prev, ...validFiles]);
+    setNewImagePreviews((prev) => [...prev, ...previews]);
   };
 
-  const handleRemoveEditImage = (indexToRemove) => {
-    setEditImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  // ลบรูปภาพเดิม
+  const handleRemoveExistingImage = (indexToRemove) => {
+    setExistingImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
+  // ลบรูปภาพใหม่ที่เพิ่งเพิ่ม
+  const handleRemoveNewImage = (indexToRemove) => {
+    setNewImageFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+    setNewImagePreviews((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  // 🌟 ส่งข้อมูลการแก้ไข (อัปโหลดรูปใหม่เข้า R2 ก่อน แล้วค่อยเซฟลง Database)
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
-    if (editImages.length === 0) {
+    if (existingImages.length === 0 && newImageFiles.length === 0) {
       alert('Please provide at least one image.');
       return;
     }
 
     setIsUpdating(true);
     try {
+      const uploadedUrls = [];
+
+      // สเตป 1: ถ้ามี "รูปภาพใหม่" ให้อัปโหลดเข้า R2 ก่อน
+      for (const file of newImageFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const uploadRes = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!uploadRes.ok) throw new Error('Failed to upload new image');
+        
+        const uploadData = await uploadRes.json();
+        const r2PublicUrl = `https://pub-3e184cc2bc334d1fbf04415454aa22ef.r2.dev/${uploadData.fileName}`;
+        uploadedUrls.push(r2PublicUrl);
+      }
+
+      // สเตป 2: รวม "รูปลิงก์เดิม" กับ "รูปลิงก์ใหม่" เข้าด้วยกัน
+      const finalImages = [...existingImages, ...uploadedUrls];
+
+      // สเตป 3: ส่งข้อมูลทั้งหมดไปอัปเดตที่ Database
       const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/models/${editingModel.id}`, {
         method: 'PUT',
         headers: {
@@ -193,7 +234,7 @@ const ProfilePage = () => {
         body: JSON.stringify({
           title: editTitle,
           description: editDescription,
-          images: editImages,
+          images: finalImages, // 👈 ส่ง Array ที่รวมลิงก์ทั้งหมดแล้วไปให้
           category: editCategory,
           price: Number(editPrice),
         }),
@@ -360,6 +401,7 @@ const ProfilePage = () => {
                       src={parseImages(model.image_url)[0]} 
                       alt={model.title} 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80' }} 
                     />
                     {parseImages(model.image_url).length > 1 && (
                       <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md border border-gray-700 shadow-sm z-10 pointer-events-none">
@@ -383,7 +425,15 @@ const ProfilePage = () => {
           {editingModel && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
-                <button onClick={() => setEditingModel(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors z-10">
+                <button 
+                  onClick={() => {
+                    setEditingModel(null);
+                    setExistingImages([]);
+                    setNewImageFiles([]);
+                    setNewImagePreviews([]);
+                  }} 
+                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors z-10"
+                >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
                 <div className="p-8 max-h-[90vh] overflow-y-auto hide-scrollbar">
@@ -417,14 +467,15 @@ const ProfilePage = () => {
                         className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 cursor-pointer outline-none" 
                       />
                       
-                      {editImages.length > 0 && (
+                      {/* 🌟 แสดงรูปภาพเดิมที่มีอยู่แล้ว 🌟 */}
+                      {existingImages.length > 0 && (
                         <div className="grid grid-cols-2 gap-2 mt-4">
-                          {editImages.map((img, index) => (
-                            <div key={index} className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
-                              <img src={img} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                          {existingImages.map((img, index) => (
+                            <div key={`exist-${index}`} className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+                              <img src={img} alt={`Existing ${index}`} className="w-full h-full object-cover" />
                               <button 
                                 type="button"
-                                onClick={() => handleRemoveEditImage(index)} 
+                                onClick={() => handleRemoveExistingImage(index)} 
                                 className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1 hover:bg-red-500 transition-colors"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -433,6 +484,26 @@ const ProfilePage = () => {
                           ))}
                         </div>
                       )}
+
+                      {/* 🌟 แสดงรูปภาพใหม่ที่เพิ่งกดเพิ่ม 🌟 */}
+                      {newImagePreviews.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          {newImagePreviews.map((img, index) => (
+                            <div key={`new-${index}`} className="relative aspect-video rounded-xl overflow-hidden bg-orange-50 border border-orange-200">
+                              <div className="absolute top-0 left-0 bg-[#FF7518] text-white text-[10px] font-bold px-2 py-0.5 rounded-br-lg z-10 shadow-sm">NEW</div>
+                              <img src={img} alt={`New Preview ${index}`} className="w-full h-full object-cover" />
+                              <button 
+                                type="button"
+                                onClick={() => handleRemoveNewImage(index)} 
+                                className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1 hover:bg-red-500 transition-colors"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                     </div>
 
                     <div>
@@ -460,7 +531,7 @@ const ProfilePage = () => {
                       </div>
                     </div>
                     
-                    <button type="submit" disabled={isUpdating || editImages.length === 0} className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md disabled:bg-gray-400 mt-4">
+                    <button type="submit" disabled={isUpdating || (existingImages.length === 0 && newImageFiles.length === 0)} className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md disabled:bg-gray-400 mt-4">
                       {isUpdating ? 'Saving Changes...' : 'Save Changes'}
                     </button>
                   </form>
