@@ -265,7 +265,7 @@ const DetailPage = () => {
               {/* ปุ่มกด Confirm */}
               <button 
                 onClick={handleConfirmOrder}
-                disabled={isOrdering} // ❌ ลบการเช็ก !slipImage ออก
+                disabled={isOrdering}
                 className="w-full bg-[#FF7518] hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-md flex justify-center items-center"
               >
                 {isOrdering ? 'Verifying...' : 'Confirm Order'}

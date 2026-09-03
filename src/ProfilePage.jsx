@@ -18,20 +18,21 @@ const ProfilePage = () => {
   const navigate = useNavigate();
 
   // ================= State Management =================
+  const [currentView, setCurrentView] = useState('profile');
+
   const [myModels, setMyModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
-  // State สำหรับระบบแก้ไขผลงาน (Edit Modal)
+  // State สำหรับระบบแก้ไขผลงาน
   const [editingModel, setEditingModel] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editPrice, setEditPrice] = useState(0);
   const [editCategory, setEditCategory] = useState('Art');
   
-  // 🌟 แยกระหว่าง "รูปเดิม" และ "รูปใหม่"
   const [existingImages, setExistingImages] = useState([]); 
   const [newImageFiles, setNewImageFiles] = useState([]);
   const [newImagePreviews, setNewImagePreviews] = useState([]);
@@ -99,6 +100,9 @@ const ProfilePage = () => {
     }
   }, [navigate, token, fetchMyModels, fetchAdminOrders]);
 
+  // 🌟 คำนวณจำนวนออเดอร์ที่รอดำเนินการ (Pending) 🌟
+  const pendingOrdersCount = orders.filter(order => order.status === 'pending').length;
+
   // ================= Event Handlers =================
   const handleLogout = () => {
     localStorage.removeItem('maker_token');
@@ -131,7 +135,7 @@ const ProfilePage = () => {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        alert(`Order has been ${newStatus}!`);
+        // อัปเดต State โดยตรง จะทำให้ตัวเลข Pending Count ลดลงอัตโนมัติ
         setOrders(orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)));
       } else {
         alert('Failed to update order status');
@@ -148,8 +152,6 @@ const ProfilePage = () => {
     setEditDescription(model.description || '');
     setEditPrice(model.price || 0);
     setEditCategory(model.category || 'Art');
-    
-    // โหลดรูปภาพเดิมที่มีอยู่แล้ว
     setExistingImages(parseImages(model.image_url));
     setNewImageFiles([]);
     setNewImagePreviews([]);
@@ -158,16 +160,12 @@ const ProfilePage = () => {
   const handleEditImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-
-    // นับรวมรูปเก่าและรูปใหม่ ต้องไม่เกิน 4
     if (existingImages.length + newImageFiles.length + files.length > 4) {
       alert('You can have up to 4 images per model.');
       return;
     }
-
     const validFiles = [];
     const previews = [];
-
     files.forEach((file) => {
       if (file.size > 1024 * 1024) {
         alert(`File "${file.name}" exceeds 1MB.`);
@@ -176,55 +174,41 @@ const ProfilePage = () => {
       validFiles.push(file);
       previews.push(URL.createObjectURL(file));
     });
-
     setNewImageFiles((prev) => [...prev, ...validFiles]);
     setNewImagePreviews((prev) => [...prev, ...previews]);
   };
 
-  // ลบรูปภาพเดิม
   const handleRemoveExistingImage = (indexToRemove) => {
     setExistingImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // ลบรูปภาพใหม่ที่เพิ่งเพิ่ม
   const handleRemoveNewImage = (indexToRemove) => {
     setNewImageFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
     setNewImagePreviews((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // 🌟 ส่งข้อมูลการแก้ไข (อัปโหลดรูปใหม่เข้า R2 ก่อน แล้วค่อยเซฟลง Database)
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     if (existingImages.length === 0 && newImageFiles.length === 0) {
       alert('Please provide at least one image.');
       return;
     }
-
     setIsUpdating(true);
     try {
       const uploadedUrls = [];
-
-      // สเตป 1: ถ้ามี "รูปภาพใหม่" ให้อัปโหลดเข้า R2 ก่อน
       for (const file of newImageFiles) {
         const formData = new FormData();
         formData.append('file', file);
-
         const uploadRes = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/upload', {
           method: 'POST',
           body: formData
         });
-
         if (!uploadRes.ok) throw new Error('Failed to upload new image');
-        
         const uploadData = await uploadRes.json();
         const r2PublicUrl = `https://pub-3e184cc2bc334d1fbf04415454aa22ef.r2.dev/${uploadData.fileName}`;
         uploadedUrls.push(r2PublicUrl);
       }
-
-      // สเตป 2: รวม "รูปลิงก์เดิม" กับ "รูปลิงก์ใหม่" เข้าด้วยกัน
       const finalImages = [...existingImages, ...uploadedUrls];
-
-      // สเตป 3: ส่งข้อมูลทั้งหมดไปอัปเดตที่ Database
       const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/models/${editingModel.id}`, {
         method: 'PUT',
         headers: {
@@ -234,12 +218,11 @@ const ProfilePage = () => {
         body: JSON.stringify({
           title: editTitle,
           description: editDescription,
-          images: finalImages, // 👈 ส่ง Array ที่รวมลิงก์ทั้งหมดแล้วไปให้
+          images: finalImages, 
           category: editCategory,
           price: Number(editPrice),
         }),
       });
-
       if (res.ok) {
         setEditingModel(null);
         fetchMyModels();
@@ -269,10 +252,37 @@ const ProfilePage = () => {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
             Home
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 text-white bg-[#2d2d2f] rounded-lg font-medium text-sm transition-colors">
+          
+          <button 
+            onClick={() => setCurrentView('profile')} 
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+              currentView === 'profile' ? 'bg-[#2d2d2f] text-white' : 'text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50'
+            }`}
+          >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
             My Profile
           </button>
+
+          {/* 🌟 ปุ่ม Manage Orders พร้อม Badge แจ้งเตือน 🌟 */}
+          {currentUserRole === 'admin' && (
+            <button 
+              onClick={() => setCurrentView('orders')} 
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+                currentView === 'orders' ? 'bg-[#2d2d2f] text-white' : 'text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                Manage Orders
+              </div>
+              {/* โชว์ป้ายแดงเมื่อมีออเดอร์ Pending มากกว่า 0 */}
+              {pendingOrdersCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                  {pendingOrdersCount}
+                </span>
+              )}
+            </button>
+          )}
         </nav>
       </aside>
 
@@ -288,140 +298,157 @@ const ProfilePage = () => {
         </nav>
 
         <main className="w-full max-w-5xl mx-auto px-6 mt-8">
-          {/* ----- Profile Card ----- */}
-          <div className="bg-[#1c1c1e] rounded-3xl p-8 mb-10 border border-[#2d2d2f] flex items-center gap-6 shadow-lg">
-            <div className="w-24 h-24 bg-[#FF7518] rounded-full flex items-center justify-center text-4xl font-bold text-white shadow-inner">
-              {currentUser.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">{currentUser}</h1>
-              <div className="flex items-center gap-3">
-                <span className={`px-3 py-1 text-xs font-bold rounded-full ${currentUserRole === 'admin' ? 'bg-red-500/20 text-red-400' : 'bg-gray-700 text-gray-300'}`}>
-                  {currentUserRole === 'admin' ? 'Admin' : 'Creator'}
-                </span>
-                <span className="text-gray-400 text-sm">Joined recently</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ----- ADMIN ORDER MANAGEMENT ----- */}
-          {currentUserRole === 'admin' && (
-            <div className="mb-12">
-              <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4 flex items-center gap-2">
-                <svg className="w-6 h-6 text-[#FF7518]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                Customer Orders (Needs Verification)
-              </h2>
-
-              <div className="bg-[#1c1c1e] border border-[#2d2d2f] rounded-2xl overflow-hidden">
-                {isLoadingOrders ? (
-                  <p className="text-gray-400 text-center py-8">Loading orders...</p>
-                ) : orders.length === 0 ? (
-                  <p className="text-gray-400 text-center py-8">No orders yet.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-gray-300">
-                      <thead className="text-xs text-gray-400 uppercase bg-black/40 border-b border-[#2d2d2f]">
-                        <tr>
-                          <th className="px-6 py-4">Buyer</th>
-                          <th className="px-6 py-4">Model</th>
-                          <th className="px-6 py-4 text-center">Status</th>
-                          <th className="px-6 py-4 text-center">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {orders.map((order) => (
-                          <tr key={order.id} className="border-b border-[#2d2d2f] hover:bg-black/20">
-                            <td className="px-6 py-4 font-medium text-white">@{order.buyer_username}</td>
-                            <td className="px-6 py-4 truncate max-w-[150px]">{order.model_title || order.model_id}</td>
-                            
-                            <td className="px-6 py-4 text-center">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                order.status === 'approved' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
-                                order.status === 'rejected' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
-                                'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
-                              }`}>
-                                {order.status.toUpperCase()}
-                              </span>
-                            </td>
-                            
-                            <td className="px-6 py-4 flex justify-center gap-2">
-                              {order.status === 'pending' && (
-                                <>
-                                  <button onClick={() => handleUpdateOrderStatus(order.id, 'approved')} className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors">Approve</button>
-                                  <button onClick={() => handleUpdateOrderStatus(order.id, 'rejected')} className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors">Reject</button>
-                                </>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ----- All Models Section ----- */}
-          <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4">
-            {currentUserRole === 'admin' ? 'All Models in System (Admin View)' : 'My Uploaded Models'} ({myModels.length})
-          </h2>
-
-          {isLoading ? (
-            <div className="text-center py-12 text-gray-400 animate-pulse">Loading your models...</div>
-          ) : myModels.length === 0 ? (
-            <div className="text-center py-20 bg-[#1c1c1e] rounded-3xl border border-[#2d2d2f]">
-              <p className="text-lg font-medium text-white mb-2">You haven't uploaded any models yet.</p>
-              <button onClick={() => navigate('/')} className="mt-4 bg-[#FF7518] hover:bg-orange-600 text-white px-6 py-2 rounded-full text-sm font-bold transition-colors">
-                Go to Home to Upload
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {myModels.map((model) => (
-                <div key={model.id} className="group bg-[#1c1c1e] rounded-3xl overflow-hidden border border-[#2d2d2f] shadow-md hover:border-[#444] transition-all duration-300 flex flex-col relative">
-                  
-                  <div className="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleEditClick(model); }}
-                      className="bg-black/70 hover:bg-blue-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(model.id); }}
-                      className="bg-black/70 hover:bg-red-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                  </div>
-
-                  <div className="relative aspect-[4/3] overflow-hidden bg-black">
-                    <img 
-                      src={parseImages(model.image_url)[0]} 
-                      alt={model.title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80' }} 
-                    />
-                    {parseImages(model.image_url).length > 1 && (
-                      <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md border border-gray-700 shadow-sm z-10 pointer-events-none">
-                        +{parseImages(model.image_url).length - 1} photos
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-4">
-                    <h3 className="text-white font-semibold text-lg truncate mb-1">{model.title}</h3>
-                    <p className="text-xs text-gray-500">
-                      {model.author === currentUser ? 'Uploaded by you' : `Uploaded by @${model.author}`}
-                    </p>
+          
+          {/* ================= หน้าจอ Profile ================= */}
+          {currentView === 'profile' ? (
+            <>
+              {/* Profile Card */}
+              <div className="bg-[#1c1c1e] rounded-3xl p-8 mb-10 border border-[#2d2d2f] flex items-center gap-6 shadow-lg">
+                <div className="w-24 h-24 bg-[#FF7518] rounded-full flex items-center justify-center text-4xl font-bold text-white shadow-inner">
+                  {currentUser.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-white mb-2">{currentUser}</h1>
+                  <div className="flex items-center gap-3">
+                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${currentUserRole === 'admin' ? 'bg-red-500/20 text-red-400' : 'bg-gray-700 text-gray-300'}`}>
+                      {currentUserRole === 'admin' ? 'Admin' : 'Creator'}
+                    </span>
+                    <span className="text-gray-400 text-sm">Joined recently</span>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+
+              {/* All Models Section */}
+              <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4">
+                {currentUserRole === 'admin' ? 'All Models in System (Admin View)' : 'My Uploaded Models'} ({myModels.length})
+              </h2>
+
+              {isLoading ? (
+                <div className="text-center py-12 text-gray-400 animate-pulse">Loading your models...</div>
+              ) : myModels.length === 0 ? (
+                <div className="text-center py-20 bg-[#1c1c1e] rounded-3xl border border-[#2d2d2f]">
+                  <p className="text-lg font-medium text-white mb-2">You haven't uploaded any models yet.</p>
+                  <button onClick={() => navigate('/')} className="mt-4 bg-[#FF7518] hover:bg-orange-600 text-white px-6 py-2 rounded-full text-sm font-bold transition-colors">
+                    Go to Home to Upload
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {myModels.map((model) => (
+                    <div key={model.id} className="group bg-[#1c1c1e] rounded-3xl overflow-hidden border border-[#2d2d2f] shadow-md hover:border-[#444] transition-all duration-300 flex flex-col relative">
+                      
+                      <div className="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleEditClick(model); }}
+                          className="bg-black/70 hover:bg-blue-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(model.id); }}
+                          className="bg-black/70 hover:bg-red-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </div>
+
+                      <div className="relative aspect-[4/3] overflow-hidden bg-black">
+                        <img 
+                          src={parseImages(model.image_url)[0]} 
+                          alt={model.title} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                          onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80' }} 
+                        />
+                        {parseImages(model.image_url).length > 1 && (
+                          <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md border border-gray-700 shadow-sm z-10 pointer-events-none">
+                            +{parseImages(model.image_url).length - 1} photos
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-4">
+                        <h3 className="text-white font-semibold text-lg truncate mb-1">{model.title}</h3>
+                        <p className="text-xs text-gray-500">
+                          {model.author === currentUser ? 'Uploaded by you' : `Uploaded by @${model.author}`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            /* ================= หน้าจอ Manage Orders ================= */
+            <>
+              <div className="mb-12">
+                <h2 className="text-2xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4 flex items-center gap-2">
+                  <svg className="w-7 h-7 text-[#FF7518]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                  Manage Customer Orders
+                  {/* แสดงสรุปหัวตาราง */}
+                  {pendingOrdersCount > 0 && (
+                    <span className="ml-2 text-sm font-medium bg-red-500/10 text-red-500 px-3 py-1 rounded-full border border-red-500/20">
+                      {pendingOrdersCount} Pending
+                    </span>
+                  )}
+                </h2>
+
+                <div className="bg-[#1c1c1e] border border-[#2d2d2f] rounded-2xl overflow-hidden shadow-lg">
+                  {isLoadingOrders ? (
+                    <p className="text-gray-400 text-center py-12">Loading orders...</p>
+                  ) : orders.length === 0 ? (
+                    <div className="text-center py-20">
+                      <p className="text-lg font-medium text-white mb-2">No orders yet.</p>
+                      <p className="text-sm opacity-80 text-gray-400">When customers place an order, it will appear here.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm text-gray-300">
+                        <thead className="text-xs text-gray-400 uppercase bg-black/40 border-b border-[#2d2d2f]">
+                          <tr>
+                            <th className="px-6 py-4">Buyer</th>
+                            <th className="px-6 py-4">Model</th>
+                            <th className="px-6 py-4 text-center">Status</th>
+                            <th className="px-6 py-4 text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {orders.map((order) => (
+                            <tr key={order.id} className="border-b border-[#2d2d2f] hover:bg-black/20 transition-colors">
+                              <td className="px-6 py-4 font-medium text-white">@{order.buyer_username}</td>
+                              <td className="px-6 py-4 truncate max-w-[150px]">{order.model_title || order.model_id}</td>
+                              
+                              <td className="px-6 py-4 text-center">
+                                <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
+                                  order.status === 'approved' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                                  order.status === 'rejected' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                                  'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                                }`}>
+                                  {order.status.toUpperCase()}
+                                </span>
+                              </td>
+                              
+                              <td className="px-6 py-4 flex justify-center gap-2">
+                                {order.status === 'pending' ? (
+                                  <>
+                                    <button onClick={() => handleUpdateOrderStatus(order.id, 'approved')} className="px-3 py-1.5 bg-green-600/20 text-green-500 border border-green-600/50 hover:bg-green-600 hover:text-white rounded-lg transition-colors font-medium">Approve</button>
+                                    <button onClick={() => handleUpdateOrderStatus(order.id, 'rejected')} className="px-3 py-1.5 bg-red-600/20 text-red-500 border border-red-600/50 hover:bg-red-600 hover:text-white rounded-lg transition-colors font-medium">Reject</button>
+                                  </>
+                                ) : (
+                                  <span className="text-gray-500 text-xs italic">Reviewed</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
           )}
 
-          {/* ----- Edit Modal ----- */}
+          {/* ----- Edit Modal (แสดงผลทับทุกหน้า) ----- */}
           {editingModel && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
@@ -467,7 +494,6 @@ const ProfilePage = () => {
                         className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 cursor-pointer outline-none" 
                       />
                       
-                      {/* 🌟 แสดงรูปภาพเดิมที่มีอยู่แล้ว 🌟 */}
                       {existingImages.length > 0 && (
                         <div className="grid grid-cols-2 gap-2 mt-4">
                           {existingImages.map((img, index) => (
@@ -485,7 +511,6 @@ const ProfilePage = () => {
                         </div>
                       )}
 
-                      {/* 🌟 แสดงรูปภาพใหม่ที่เพิ่งกดเพิ่ม 🌟 */}
                       {newImagePreviews.length > 0 && (
                         <div className="grid grid-cols-2 gap-2 mt-2">
                           {newImagePreviews.map((img, index) => (
@@ -503,7 +528,6 @@ const ProfilePage = () => {
                           ))}
                         </div>
                       )}
-
                     </div>
 
                     <div>
