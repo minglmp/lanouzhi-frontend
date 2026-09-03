@@ -69,8 +69,9 @@ const ProfilePage = () => {
     }
   }, [currentUser, currentUserRole]);
 
-  const fetchAdminOrders = useCallback(async () => {
-    if (currentUserRole !== 'admin' || !token) return;
+  // 🌟 ปลดล็อก: ไม่เช็ก Role ว่าต้องเป็นแอดมินแล้ว ทุกคนดึงได้ (ฝั่ง Backend จะกรองข้อมูลให้เอง)
+  const fetchOrders = useCallback(async () => {
+    if (!token) return;
     setIsLoadingOrders(true);
     try {
       const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/orders', {
@@ -85,18 +86,21 @@ const ProfilePage = () => {
     } finally {
       setIsLoadingOrders(false);
     }
-  }, [currentUserRole, token]);
+  }, [token]);
 
   useEffect(() => {
     if (!token) {
       navigate('/auth');
     } else {
       fetchMyModels();
-      fetchAdminOrders();
+      fetchOrders();
     }
-  }, [navigate, token, fetchMyModels, fetchAdminOrders]);
+  }, [navigate, token, fetchMyModels, fetchOrders]);
 
-  const pendingOrdersCount = orders.filter(order => order.status === 'pending').length;
+  // ป้ายแจ้งเตือนสีแดงโชว์เฉพาะ Admin
+  const pendingOrdersCount = currentUserRole === 'admin' 
+    ? orders.filter(order => order.status === 'pending').length 
+    : 0;
 
   const handleLogout = () => {
     localStorage.removeItem('maker_token');
@@ -253,25 +257,44 @@ const ProfilePage = () => {
             My Profile
           </button>
 
-          {currentUserRole === 'admin' && (
-            <button 
-              onClick={() => setCurrentView('orders')} 
-              className={`w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors ${
-                currentView === 'orders' ? 'bg-[#2d2d2f] text-white' : 'text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                Manage Orders
-              </div>
-              {pendingOrdersCount > 0 && (
-                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
-                  {pendingOrdersCount}
-                </span>
-              )}
-            </button>
-          )}
+          {/* 🌟 ปุ่ม Manage Orders / My Purchases 🌟 */}
+          <button 
+            onClick={() => setCurrentView('orders')} 
+            className={`w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors ${
+              currentView === 'orders' ? 'bg-[#2d2d2f] text-white' : 'text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+              {currentUserRole === 'admin' ? 'Manage Orders' : 'My Purchases'}
+            </div>
+            {currentUserRole === 'admin' && pendingOrdersCount > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                {pendingOrdersCount}
+              </span>
+            )}
+          </button>
         </nav>
+        {/* Footer */}
+        <div className="mt-auto p-4 border-t border-[#2d2d2f]">
+          <div className="flex items-center gap-4 mb-4 text-gray-500">
+            <a href="#" className="hover:text-gray-300 transition-colors">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" /></svg>
+            </a>
+            <a href="#" className="hover:text-gray-300 transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            </a>
+            <a href="#" className="hover:text-gray-300 transition-colors">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.5 12 3.5 12 3.5s-7.505 0-9.377.55a3.016 3.016 0 0 0-2.122 2.136C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.55 9.376.55 9.376.55s7.505 0 9.377-.55a3.016 3.016 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" /></svg>
+            </a>
+            <a href="#" className="hover:text-gray-300 transition-colors">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" /></svg>
+            </a>
+          </div>
+          <div className="text-[11px] text-gray-600 font-medium">
+            © 2026 Lanouzhi.lab
+          </div>
+        </div>
       </aside>
 
       {/* ================= Main Content ================= */}
@@ -298,7 +321,6 @@ const ProfilePage = () => {
                 <div>
                   <h1 className="text-3xl font-bold text-white mb-2">{currentUser}</h1>
                   <div className="flex items-center gap-3">
-                    {/* 🌟 เช็กสถานะป้าย Role 🌟 */}
                     <span className={`px-3 py-1 text-xs font-bold rounded-full ${
                       currentUserRole === 'admin' ? 'bg-red-500/20 text-red-400' : 
                       currentUserRole === 'creator' ? 'bg-blue-500/20 text-blue-400' : 
@@ -311,7 +333,6 @@ const ProfilePage = () => {
                 </div>
               </div>
 
-              {/* 🌟 ซ่อนส่วน My Models ถ้าเป็นแค่ User ธรรมดา 🌟 */}
               {(currentUserRole === 'admin' || currentUserRole === 'creator') ? (
                 <>
                   <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4">
@@ -367,14 +388,13 @@ const ProfilePage = () => {
               )}
             </>
           ) : (
-            /* ================= หน้าจอ Manage Orders ================= */
+            /* ================= หน้าจอ Manage Orders / My Purchases ================= */
             <>
-              {/* ตารางออเดอร์ (แอดมินเท่านั้น) คงเดิม... */}
               <div className="mb-12">
                 <h2 className="text-2xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4 flex items-center gap-2">
-                  <svg className="w-7 h-7 text-[#FF7518]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                  Manage Customer Orders
-                  {pendingOrdersCount > 0 && (
+                  <svg className="w-7 h-7 text-[#FF7518]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                  {currentUserRole === 'admin' ? 'Manage Customer Orders' : 'My Purchase History'}
+                  {currentUserRole === 'admin' && pendingOrdersCount > 0 && (
                     <span className="ml-2 text-sm font-medium bg-red-500/10 text-red-500 px-3 py-1 rounded-full border border-red-500/20">
                       {pendingOrdersCount} Pending
                     </span>
@@ -386,24 +406,31 @@ const ProfilePage = () => {
                     <p className="text-gray-400 text-center py-12">Loading orders...</p>
                   ) : orders.length === 0 ? (
                     <div className="text-center py-20">
-                      <p className="text-lg font-medium text-white mb-2">No orders yet.</p>
-                      <p className="text-sm opacity-80 text-gray-400">When customers place an order, it will appear here.</p>
+                      <p className="text-lg font-medium text-white mb-2">{currentUserRole === 'admin' ? 'No orders yet.' : 'You haven\'t purchased anything yet.'}</p>
+                      <p className="text-sm opacity-80 text-gray-400">{currentUserRole === 'admin' ? 'When customers place an order, it will appear here.' : 'Head over to the home page to explore models!'}</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm text-gray-300">
                         <thead className="text-xs text-gray-400 uppercase bg-black/40 border-b border-[#2d2d2f]">
                           <tr>
-                            <th className="px-6 py-4">Buyer</th>
+                            {/* เปลี่ยนหัวตารางนิดหน่อยตาม Role */}
+                            {currentUserRole === 'admin' ? <th className="px-6 py-4">Buyer</th> : <th className="px-6 py-4">Order ID</th>}
                             <th className="px-6 py-4">Model</th>
                             <th className="px-6 py-4 text-center">Status</th>
-                            <th className="px-6 py-4 text-center">Action</th>
+                            <th className="px-6 py-4 text-center">{currentUserRole === 'admin' ? 'Action' : 'Note'}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {orders.map((order) => (
                             <tr key={order.id} className="border-b border-[#2d2d2f] hover:bg-black/20 transition-colors">
-                              <td className="px-6 py-4 font-medium text-white">@{order.buyer_username}</td>
+                              {/* แสดงชื่อผู้ซื้อถ้าเป็นแอดมิน, แสดงรหัสออเดอร์ถ้าเป็นลูกค้า */}
+                              {currentUserRole === 'admin' ? (
+                                <td className="px-6 py-4 font-medium text-white">@{order.buyer_username}</td>
+                              ) : (
+                                <td className="px-6 py-4 font-medium text-gray-400">#{order.id.substring(0, 8).toUpperCase()}</td>
+                              )}
+                              
                               <td className="px-6 py-4 truncate max-w-[150px]">{order.model_title || order.model_id}</td>
                               <td className="px-6 py-4 text-center">
                                 <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
@@ -414,14 +441,23 @@ const ProfilePage = () => {
                                   {order.status.toUpperCase()}
                                 </span>
                               </td>
+                              
                               <td className="px-6 py-4 flex justify-center gap-2">
-                                {order.status === 'pending' ? (
-                                  <>
-                                    <button onClick={() => handleUpdateOrderStatus(order.id, 'approved')} className="px-3 py-1.5 bg-green-600/20 text-green-500 border border-green-600/50 hover:bg-green-600 hover:text-white rounded-lg transition-colors font-medium">Approve</button>
-                                    <button onClick={() => handleUpdateOrderStatus(order.id, 'rejected')} className="px-3 py-1.5 bg-red-600/20 text-red-500 border border-red-600/50 hover:bg-red-600 hover:text-white rounded-lg transition-colors font-medium">Reject</button>
-                                  </>
+                                {/* แอดมินจะเห็นปุ่มอนุมัติ, ลูกค้าจะเห็นคำอธิบาย */}
+                                {currentUserRole === 'admin' ? (
+                                  order.status === 'pending' ? (
+                                    <>
+                                      <button onClick={() => handleUpdateOrderStatus(order.id, 'approved')} className="px-3 py-1.5 bg-green-600/20 text-green-500 border border-green-600/50 hover:bg-green-600 hover:text-white rounded-lg transition-colors font-medium">Approve</button>
+                                      <button onClick={() => handleUpdateOrderStatus(order.id, 'rejected')} className="px-3 py-1.5 bg-red-600/20 text-red-500 border border-red-600/50 hover:bg-red-600 hover:text-white rounded-lg transition-colors font-medium">Reject</button>
+                                    </>
+                                  ) : (
+                                    <span className="text-gray-500 text-xs italic">Reviewed</span>
+                                  )
                                 ) : (
-                                  <span className="text-gray-500 text-xs italic">Reviewed</span>
+                                  // ของลูกค้าโชว์แค่นี้
+                                  <span className="text-gray-400 text-xs">
+                                    {order.status === 'approved' ? '✅ Ready to download' : order.status === 'rejected' ? '❌ Invalid slip' : '⏳ Waiting for admin'}
+                                  </span>
                                 )}
                               </td>
                             </tr>
