@@ -23,8 +23,7 @@ const DetailPage = () => {
   
   // State สำหรับ Checkout Modal
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
-  const [slipImage, setSlipImage] = useState('');
-  const [isOrdering, setIsOrdering] = useState(false);
+  const [isOrdering, setIsOrdering] = useState(false); // ❌ ลบ State สลิปออกแล้ว
 
   // ================= Fetch Data =================
   useEffect(() => {
@@ -55,28 +54,8 @@ const DetailPage = () => {
     setIsCheckoutModalOpen(true);
   };
 
-  // 2. จัดการเมื่ออัปโหลดสลิป
-  const handleSlipChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) { // ไม่เกิน 2MB
-        alert('Please select an image smaller than 2MB');
-        e.target.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => setSlipImage(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // 3. กดยืนยันการสั่งซื้อ
+  // 2. กดยืนยันการสั่งซื้อ (ปรับให้ไม่ต้องส่งสลิป)
   const handleConfirmOrder = async () => {
-    if (!slipImage) {
-      alert('Please upload your payment slip before confirming.');
-      return;
-    }
-
     const token = localStorage.getItem('maker_token');
     setIsOrdering(true);
     
@@ -88,15 +67,14 @@ const DetailPage = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ 
-          model_id: model.id,
-          slip_image: slipImage
+          model_id: model.id
+          // ❌ ไม่ส่ง slip_image ไปหลังบ้านแล้ว
         })
       });
 
       if (res.ok) {
         alert('🎉 Order submitted successfully!\n\nPlease wait for the Admin to verify your payment. Once approved, you can download the files.');
         setIsCheckoutModalOpen(false);
-        setSlipImage('');
       } else {
         alert('Failed to place order. Please try again.');
       }
@@ -238,7 +216,7 @@ const DetailPage = () => {
             
             {/* ปุ่มปิด Modal */}
             <button 
-              onClick={() => { setIsCheckoutModalOpen(false); setSlipImage(''); }} 
+              onClick={() => setIsCheckoutModalOpen(false)} // ❌ ลบการเคลียร์รูปออก
               className="absolute top-4 right-4 text-gray-400 hover:text-white bg-black/30 hover:bg-black/50 rounded-full p-2 transition-colors z-10"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -265,10 +243,10 @@ const DetailPage = () => {
               </div>
 
               {/* QR Code สำหรับโอนเงิน */}
-              <div className="flex flex-col items-center mb-6">
+              <div className="flex flex-col items-center mb-8"> 
                 <p className="text-white font-medium mb-3 text-sm">Scan QR Code to Pay (BCEL One)</p>
                 
-                {/* 🌟 กล่องบัญชี (เพิ่ม mx-auto จัดกลางเป๊ะๆ) 🌟 */}
+                {/* กล่องบัญชี */}
                 <div className="mx-auto text-center mb-4 bg-black/40 px-4 py-2.5 rounded-xl border border-[#2d2d2f] w-full max-w-[260px]">
                   <p className="text-gray-400 text-[11px] uppercase tracking-wider mb-1">
                     ADMIN ACCOUNT NUMBER
@@ -280,32 +258,15 @@ const DetailPage = () => {
                   </div>
                 </div>
 
-                <div className="bg-white p-2 rounded-xl">
-                  {/* เปลี่ยนเป็นรูป QR Code จริงของคุณได้เลย */}
+                <div className="bg-white p-2 rounded-xl shadow-lg">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg" alt="QR Code" className="w-32 h-32" />
                 </div>
-              </div>
-
-              {/* ช่องอัปโหลดสลิป */}
-              <div className="mb-8">
-                <label className="block text-sm font-medium text-gray-300 mb-2">Upload Payment Slip</label>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleSlipChange}
-                  className="w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[#2d2d2f] file:text-white hover:file:bg-[#3d3d3f] cursor-pointer outline-none transition-all" 
-                />
-                {slipImage && (
-                  <div className="mt-3 relative w-24 h-32 rounded-lg overflow-hidden border border-[#2d2d2f]">
-                    <img src={slipImage} alt="Slip Preview" className="w-full h-full object-cover" />
-                  </div>
-                )}
               </div>
 
               {/* ปุ่มกด Confirm */}
               <button 
                 onClick={handleConfirmOrder}
-                disabled={isOrdering || !slipImage}
+                disabled={isOrdering} // ❌ ลบการเช็ก !slipImage ออก
                 className="w-full bg-[#FF7518] hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-md flex justify-center items-center"
               >
                 {isOrdering ? 'Verifying...' : 'Confirm Order'}

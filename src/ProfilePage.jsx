@@ -283,7 +283,6 @@ const ProfilePage = () => {
                         <tr>
                           <th className="px-6 py-4">Buyer</th>
                           <th className="px-6 py-4">Model</th>
-                          <th className="px-6 py-4 text-center">Payment Slip</th>
                           <th className="px-6 py-4 text-center">Status</th>
                           <th className="px-6 py-4 text-center">Action</th>
                         </tr>
@@ -293,13 +292,6 @@ const ProfilePage = () => {
                           <tr key={order.id} className="border-b border-[#2d2d2f] hover:bg-black/20">
                             <td className="px-6 py-4 font-medium text-white">@{order.buyer_username}</td>
                             <td className="px-6 py-4 truncate max-w-[150px]">{order.model_title || order.model_id}</td>
-                            
-                            <td className="px-6 py-4 text-center">
-                              <a href={order.slip_image} target="_blank" rel="noreferrer" className="text-[#FF7518] hover:underline flex flex-col items-center gap-1">
-                                <img src={order.slip_image} alt="Slip" className="w-10 h-14 object-cover rounded border border-[#2d2d2f]" />
-                                <span className="text-xs">View Slip</span>
-                              </a>
-                            </td>
                             
                             <td className="px-6 py-4 text-center">
                               <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
