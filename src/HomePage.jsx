@@ -21,7 +21,7 @@ const HomePage = () => {
   const [models, setModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🌟 State สำหรับเก็บข้อมูลออเดอร์เพื่อใช้นับแจ้งเตือน
+  // State สำหรับเก็บข้อมูลออเดอร์เพื่อใช้นับแจ้งเตือน
   const [orders, setOrders] = useState([]);
 
   // States สำหรับ Upload Modal
@@ -68,7 +68,7 @@ const HomePage = () => {
     }
   };
 
-  // 🌟 ฟังก์ชันดึงออเดอร์ (ดึงเฉพาะแอดมิน)
+  // ฟังก์ชันดึงออเดอร์ (ดึงเฉพาะแอดมิน)
   const fetchAdminOrders = async () => {
     if (currentUserRole !== 'admin' || !token) return;
     try {
@@ -89,7 +89,7 @@ const HomePage = () => {
     fetchAdminOrders(); // เรียกใช้อัตโนมัติเมื่อโหลดหน้า
   }, []);
 
-  // 🌟 นับจำนวนออเดอร์ที่สถานะ pending
+  // นับจำนวนออเดอร์ที่สถานะ pending
   const pendingOrdersCount = orders.filter(order => order.status === 'pending').length;
 
   // จัดการเมื่อเลือกไฟล์รูปภาพ
@@ -243,7 +243,7 @@ const HomePage = () => {
           {isLoggedIn && (
             <button
               onClick={() => navigate('/profile')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors mt-2"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               My Profile
@@ -254,7 +254,7 @@ const HomePage = () => {
           {currentUserRole === 'admin' && (
             <button 
               onClick={() => navigate('/profile', { state: { openOrders: true } })} 
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-medium text-sm transition-colors text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50"
+              className="w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50"
             >
               <div className="flex items-center gap-3">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012-2h2a2 2 0 012 2" /></svg>

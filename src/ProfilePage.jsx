@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import logoImg from './assets/logo2.jpeg';
-import { useNavigate, useLocation } from 'react-router-dom'; // 👈 เพิ่ม useLocation
 
 const CATEGORIES = ['All', 'New', 'Art', 'Gadgets', 'Toys'];
 
@@ -17,14 +16,7 @@ const parseImages = (imageUrlField) => {
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // 👈 ดึงข้อมูลที่ส่งมาจากหน้า Home
-
-  // ถ้าหน้า Home ส่งคำสั่ง openOrders มา ให้สลับแท็บไปที่ 'orders' ทันที
-  useEffect(() => {
-    if (location.state?.openOrders) {
-      setCurrentView('orders');
-    }
-  }, [location]);
+  const location = useLocation();
 
   // ================= State Management =================
   const [currentView, setCurrentView] = useState('profile');
@@ -62,6 +54,13 @@ const ProfilePage = () => {
       console.error('Token invalid');
     }
   }
+
+  // ถ้าหน้า Home ส่งคำสั่ง openOrders มา ให้สลับแท็บไปที่ 'orders' ทันที
+  useEffect(() => {
+    if (location.state?.openOrders) {
+      setCurrentView('orders');
+    }
+  }, [location]);
 
   // ================= API Functions =================
   const fetchMyModels = useCallback(async () => {
@@ -109,7 +108,7 @@ const ProfilePage = () => {
     }
   }, [navigate, token, fetchMyModels, fetchAdminOrders]);
 
-  // 🌟 คำนวณจำนวนออเดอร์ที่รอดำเนินการ (Pending) 🌟
+  // คำนวณจำนวนออเดอร์ที่รอดำเนินการ (Pending)
   const pendingOrdersCount = orders.filter(order => order.status === 'pending').length;
 
   // ================= Event Handlers =================
@@ -144,7 +143,6 @@ const ProfilePage = () => {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        // อัปเดต State โดยตรง จะทำให้ตัวเลข Pending Count ลดลงอัตโนมัติ
         setOrders(orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)));
       } else {
         alert('Failed to update order status');
@@ -272,7 +270,6 @@ const ProfilePage = () => {
             My Profile
           </button>
 
-          {/* 🌟 ปุ่ม Manage Orders พร้อม Badge แจ้งเตือน 🌟 */}
           {currentUserRole === 'admin' && (
             <button 
               onClick={() => setCurrentView('orders')} 
@@ -281,10 +278,9 @@ const ProfilePage = () => {
               }`}
             >
               <div className="flex items-center gap-3">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                 Manage Orders
               </div>
-              {/* โชว์ป้ายแดงเมื่อมีออเดอร์ Pending มากกว่า 0 */}
               {pendingOrdersCount > 0 && (
                 <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
                   {pendingOrdersCount}
@@ -393,7 +389,6 @@ const ProfilePage = () => {
                 <h2 className="text-2xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4 flex items-center gap-2">
                   <svg className="w-7 h-7 text-[#FF7518]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                   Manage Customer Orders
-                  {/* แสดงสรุปหัวตาราง */}
                   {pendingOrdersCount > 0 && (
                     <span className="ml-2 text-sm font-medium bg-red-500/10 text-red-500 px-3 py-1 rounded-full border border-red-500/20">
                       {pendingOrdersCount} Pending
@@ -457,7 +452,7 @@ const ProfilePage = () => {
             </>
           )}
 
-          {/* ----- Edit Modal (แสดงผลทับทุกหน้า) ----- */}
+          {/* ----- Edit Modal ----- */}
           {editingModel && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
