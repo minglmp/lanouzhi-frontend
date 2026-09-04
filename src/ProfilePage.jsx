@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import logoImg from './assets/logo2.jpeg';
 
 const CATEGORIES = ['All', 'New', 'Art', 'Gadgets', 'Toys'];
@@ -15,17 +15,12 @@ const parseImages = (imageUrlField) => {
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const [currentView, setCurrentView] = useState('profile');
   const [myModels, setMyModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [orders, setOrders] = useState([]);
-  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
-
-  // 🌟 State สำหรับระบบ Pagination (แบ่งหน้า)
-  const [currentPage, setCurrentPage] = useState(1);
-  const ordersPerPage = 10;
+  
+  // โหลดออเดอร์แค่มาเพื่อนับ Badge แดงๆ ให้ Sidebar
+  const [orders, setOrders] = useState([]); 
 
   const [editingModel, setEditingModel] = useState(null);
   const [editTitle, setEditTitle] = useState('');
@@ -52,13 +47,6 @@ const ProfilePage = () => {
     }
   }
 
-  useEffect(() => {
-    if (location.state?.openOrders) {
-      setCurrentView('orders');
-      setCurrentPage(1); // รีเซ็ตกลับมาหน้า 1 เมื่อเปิดเมนูตาราง
-    }
-  }, [location]);
-
   const fetchMyModels = useCallback(async () => {
     try {
       const response = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/models');
@@ -76,9 +64,8 @@ const ProfilePage = () => {
     }
   }, [currentUser, currentUserRole]);
 
-  const fetchOrders = useCallback(async () => {
+  const fetchOrdersBadge = useCallback(async () => {
     if (!token) return;
-    setIsLoadingOrders(true);
     try {
       const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/orders', {
         headers: { Authorization: `Bearer ${token}` },
@@ -89,8 +76,6 @@ const ProfilePage = () => {
       }
     } catch (err) {
       console.error('Error fetching orders:', err);
-    } finally {
-      setIsLoadingOrders(false);
     }
   }, [token]);
 
@@ -99,19 +84,11 @@ const ProfilePage = () => {
       navigate('/auth');
     } else {
       fetchMyModels();
-      fetchOrders();
+      fetchOrdersBadge();
     }
-  }, [navigate, token, fetchMyModels, fetchOrders]);
+  }, [navigate, token, fetchMyModels, fetchOrdersBadge]);
 
-  const pendingOrdersCount = currentUserRole === 'admin' 
-    ? orders.filter(order => order.status === 'pending').length 
-    : 0;
-
-  // 🌟 คำนวณข้อมูลสำหรับการแบ่งหน้า (Pagination Logic)
-  const indexOfLastOrder = currentPage * ordersPerPage;
-  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
-  const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
-  const totalPages = Math.ceil(orders.length / ordersPerPage);
+  const pendingOrdersCount = currentUserRole === 'admin' ? orders.filter(order => order.status === 'pending').length : 0;
 
   const handleLogout = () => {
     localStorage.removeItem('maker_token');
@@ -131,26 +108,7 @@ const ProfilePage = () => {
     }
   };
 
-  const handleUpdateOrderStatus = async (orderId, newStatus) => {
-    try {
-      const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/orders/${orderId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (res.ok) {
-        setOrders(orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)));
-      } else {
-        alert('Failed to update order status');
-      }
-    } catch (err) {
-      alert('Server error occurred.');
-    }
-  };
-
+  // ----- Edit Modal Handlers -----
   const handleEditClick = (model) => {
     setEditingModel(model);
     setEditTitle(model.title);
@@ -257,25 +215,13 @@ const ProfilePage = () => {
             Home
           </button>
           
-          <button 
-            onClick={() => setCurrentView('profile')} 
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
-              currentView === 'profile' ? 'bg-[#2d2d2f] text-white' : 'text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50'
-            }`}
-          >
+          <button className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#2d2d2f] text-white rounded-lg font-medium text-sm transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
             My Profile
           </button>
 
-          <button 
-            onClick={() => {
-              setCurrentView('orders');
-              setCurrentPage(1);
-            }} 
-            className={`w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors ${
-              currentView === 'orders' ? 'bg-[#2d2d2f] text-white' : 'text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50'
-            }`}
-          >
+          {/* ลิงก์ไปหน้า Orders */}
+          <button onClick={() => navigate('/orders')} className="w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50">
             <div className="flex items-center gap-3">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
               {currentUserRole === 'admin' ? 'Manage Orders' : 'My Purchases'}
@@ -314,190 +260,80 @@ const ProfilePage = () => {
           <button onClick={() => navigate('/')} className="md:hidden text-gray-400 hover:text-white">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
           </button>
-          <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 text-sm font-medium transition-colors">
-            Logout
-          </button>
+          <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 text-sm font-medium transition-colors">Logout</button>
         </nav>
 
         <main className="w-full max-w-5xl mx-auto px-6 mt-8">
-          {currentView === 'profile' ? (
-            <>
-              <div className="bg-[#1c1c1e] rounded-3xl p-8 mb-10 border border-[#2d2d2f] flex items-center gap-6 shadow-lg">
-                <div className="w-24 h-24 bg-[#FF7518] rounded-full flex items-center justify-center text-4xl font-bold text-white shadow-inner">
-                  {currentUser.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-white mb-2">{currentUser}</h1>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${
-                      currentUserRole === 'admin' ? 'bg-red-500/20 text-red-400' : 
-                      currentUserRole === 'creator' ? 'bg-blue-500/20 text-blue-400' : 
-                      'bg-gray-700 text-gray-300'
-                    }`}>
-                      {currentUserRole === 'admin' ? 'Admin' : currentUserRole === 'creator' ? 'Creator' : 'User'}
-                    </span>
-                    <span className="text-gray-400 text-sm">Joined recently</span>
-                  </div>
-                </div>
+          <div className="bg-[#1c1c1e] rounded-3xl p-8 mb-10 border border-[#2d2d2f] flex items-center gap-6 shadow-lg">
+            <div className="w-24 h-24 bg-[#FF7518] rounded-full flex items-center justify-center text-4xl font-bold text-white shadow-inner">
+              {currentUser.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">{currentUser}</h1>
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1 text-xs font-bold rounded-full ${
+                  currentUserRole === 'admin' ? 'bg-red-500/20 text-red-400' : 
+                  currentUserRole === 'creator' ? 'bg-blue-500/20 text-blue-400' : 
+                  'bg-gray-700 text-gray-300'
+                }`}>
+                  {currentUserRole === 'admin' ? 'Admin' : currentUserRole === 'creator' ? 'Creator' : 'User'}
+                </span>
+                <span className="text-gray-400 text-sm">Joined recently</span>
               </div>
+            </div>
+          </div>
 
-              {(currentUserRole === 'admin' || currentUserRole === 'creator') ? (
-                <>
-                  <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4">
-                    {currentUserRole === 'admin' ? 'All Models in System (Admin View)' : 'My Uploaded Models'} ({myModels.length})
-                  </h2>
+          {(currentUserRole === 'admin' || currentUserRole === 'creator') ? (
+            <>
+              <h2 className="text-xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4">
+                {currentUserRole === 'admin' ? 'All Models in System (Admin View)' : 'My Uploaded Models'} ({myModels.length})
+              </h2>
 
-                  {isLoading ? (
-                    <div className="text-center py-12 text-gray-400 animate-pulse">Loading your models...</div>
-                  ) : myModels.length === 0 ? (
-                    <div className="text-center py-20 bg-[#1c1c1e] rounded-3xl border border-[#2d2d2f]">
-                      <p className="text-lg font-medium text-white mb-2">You haven't uploaded any models yet.</p>
-                      <button onClick={() => navigate('/')} className="mt-4 bg-[#FF7518] hover:bg-orange-600 text-white px-6 py-2 rounded-full text-sm font-bold transition-colors">
-                        Go to Home to Upload
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                      {myModels.map((model) => (
-                        <div key={model.id} className="group bg-[#1c1c1e] rounded-3xl overflow-hidden border border-[#2d2d2f] shadow-md hover:border-[#444] transition-all duration-300 flex flex-col relative">
-                          <div className="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <button onClick={(e) => { e.stopPropagation(); handleEditClick(model); }} className="bg-black/70 hover:bg-blue-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors">
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); handleDelete(model.id); }} className="bg-black/70 hover:bg-red-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors">
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </button>
-                          </div>
-                          <div className="relative aspect-[4/3] overflow-hidden bg-black">
-                            <img src={parseImages(model.image_url)[0]} alt={model.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80' }} />
-                            {parseImages(model.image_url).length > 1 && (
-                              <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md border border-gray-700 shadow-sm z-10 pointer-events-none">
-                                +{parseImages(model.image_url).length - 1} photos
-                              </div>
-                            )}
-                          </div>
-                          <div className="p-4">
-                            <h3 className="text-white font-semibold text-lg truncate mb-1">{model.title}</h3>
-                            <p className="text-xs text-gray-500">{model.author === currentUser ? 'Uploaded by you' : `Uploaded by @${model.author}`}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
+              {isLoading ? (
+                <div className="text-center py-12 text-gray-400 animate-pulse">Loading your models...</div>
+              ) : myModels.length === 0 ? (
+                <div className="text-center py-20 bg-[#1c1c1e] rounded-3xl border border-[#2d2d2f]">
+                  <p className="text-lg font-medium text-white mb-2">You haven't uploaded any models yet.</p>
+                  <button onClick={() => navigate('/')} className="mt-4 bg-[#FF7518] hover:bg-orange-600 text-white px-6 py-2 rounded-full text-sm font-bold transition-colors">Go to Home to Upload</button>
+                </div>
               ) : (
-                <div className="text-center py-20 bg-[#1c1c1e] rounded-3xl border border-[#2d2d2f] mt-8">
-                  <p className="text-lg font-medium text-white mb-2">Welcome to Lanouzhi.lab!</p>
-                  <p className="text-sm opacity-80 text-gray-400 mb-6">Explore the homepage to find and purchase amazing 3D models.</p>
-                  <button onClick={() => navigate('/')} className="bg-[#FF7518] hover:bg-orange-600 text-white px-6 py-2 rounded-full text-sm font-bold transition-colors">
-                    Explore Models
-                  </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {myModels.map((model) => (
+                    <div key={model.id} className="group bg-[#1c1c1e] rounded-3xl overflow-hidden border border-[#2d2d2f] shadow-md hover:border-[#444] transition-all duration-300 flex flex-col relative">
+                      <div className="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <button onClick={(e) => { e.stopPropagation(); handleEditClick(model); }} className="bg-black/70 hover:bg-blue-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(model.id); }} className="bg-black/70 hover:bg-red-500 hover:text-white text-gray-200 p-2 rounded-full shadow-sm transition-colors">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </div>
+                      <div className="relative aspect-[4/3] overflow-hidden bg-black">
+                        <img src={parseImages(model.image_url)[0]} alt={model.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80' }} />
+                        {parseImages(model.image_url).length > 1 && (
+                          <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md border border-gray-700 shadow-sm z-10 pointer-events-none">
+                            +{parseImages(model.image_url).length - 1} photos
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        <h3 className="text-white font-semibold text-lg truncate mb-1">{model.title}</h3>
+                        <p className="text-xs text-gray-500">{model.author === currentUser ? 'Uploaded by you' : `Uploaded by @${model.author}`}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </>
           ) : (
-            <>
-              <div className="mb-12">
-                <h2 className="text-2xl font-bold text-white mb-6 border-b border-[#2d2d2f] pb-4 flex items-center gap-2">
-                  <svg className="w-7 h-7 text-[#FF7518]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
-                  {currentUserRole === 'admin' ? 'Manage Customer Orders' : 'My Purchase History'}
-                  {currentUserRole === 'admin' && pendingOrdersCount > 0 && (
-                    <span className="ml-2 text-sm font-medium bg-red-500/10 text-red-500 px-3 py-1 rounded-full border border-red-500/20">
-                      {pendingOrdersCount} Pending
-                    </span>
-                  )}
-                </h2>
-
-                <div className="bg-[#1c1c1e] border border-[#2d2d2f] rounded-2xl overflow-hidden shadow-lg flex flex-col">
-                  {isLoadingOrders ? (
-                    <p className="text-gray-400 text-center py-12">Loading orders...</p>
-                  ) : orders.length === 0 ? (
-                    <div className="text-center py-20">
-                      <p className="text-lg font-medium text-white mb-2">{currentUserRole === 'admin' ? 'No orders yet.' : 'You haven\'t purchased anything yet.'}</p>
-                      <p className="text-sm opacity-80 text-gray-400">{currentUserRole === 'admin' ? 'When customers place an order, it will appear here.' : 'Head over to the home page to explore models!'}</p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="overflow-x-auto flex-1">
-                        <table className="w-full text-left text-sm text-gray-300">
-                          <thead className="text-xs text-gray-400 uppercase bg-black/40 border-b border-[#2d2d2f]">
-                            <tr>
-                              {currentUserRole === 'admin' ? <th className="px-6 py-4">Buyer</th> : <th className="px-6 py-4">Order ID</th>}
-                              <th className="px-6 py-4">Model</th>
-                              <th className="px-6 py-4 text-center">Status</th>
-                              <th className="px-6 py-4 text-center">{currentUserRole === 'admin' ? 'Action' : 'Note'}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {currentOrders.map((order) => (
-                              <tr key={order.id} className="border-b border-[#2d2d2f] hover:bg-black/20 transition-colors">
-                                {currentUserRole === 'admin' ? (
-                                  <td className="px-6 py-4 font-medium text-white">@{order.buyer_username}</td>
-                                ) : (
-                                  <td className="px-6 py-4 font-medium text-gray-400">#{order.id.substring(0, 8).toUpperCase()}</td>
-                                )}
-                                
-                                <td className="px-6 py-4 truncate max-w-[150px]">{order.model_title || order.model_id}</td>
-                                <td className="px-6 py-4 text-center">
-                                  <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-                                    order.status === 'approved' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
-                                    order.status === 'rejected' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
-                                    'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
-                                  }`}>
-                                    {order.status.toUpperCase()}
-                                  </span>
-                                </td>
-                                
-                                <td className="px-6 py-4 flex justify-center gap-2">
-                                  {currentUserRole === 'admin' ? (
-                                    order.status === 'pending' ? (
-                                      <>
-                                        <button onClick={() => handleUpdateOrderStatus(order.id, 'approved')} className="px-3 py-1.5 bg-green-600/20 text-green-500 border border-green-600/50 hover:bg-green-600 hover:text-white rounded-lg transition-colors font-medium">Approve</button>
-                                        <button onClick={() => handleUpdateOrderStatus(order.id, 'rejected')} className="px-3 py-1.5 bg-red-600/20 text-red-500 border border-red-600/50 hover:bg-red-600 hover:text-white rounded-lg transition-colors font-medium">Reject</button>
-                                      </>
-                                    ) : (
-                                      <span className="text-gray-500 text-xs italic">Reviewed</span>
-                                    )
-                                  ) : (
-                                    <span className="text-gray-400 text-xs">
-                                      {order.status === 'approved' ? '✅ Ready to download' : order.status === 'rejected' ? '❌ Invalid slip' : '⏳ Waiting for admin'}
-                                    </span>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {totalPages > 1 && (
-                        <div className="flex items-center justify-between px-6 py-4 border-t border-[#2d2d2f] bg-[#18181a]/50">
-                          <button
-                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            disabled={currentPage === 1}
-                            className="px-4 py-2 text-sm font-medium text-white bg-[#2d2d2f] rounded-lg disabled:opacity-30 hover:bg-[#3d3d3f] transition-colors"
-                          >
-                            Previous
-                          </button>
-                          <span className="text-sm text-gray-400">
-                            Page <span className="font-semibold text-white">{currentPage}</span> of <span className="font-semibold text-white">{totalPages}</span>
-                          </span>
-                          <button
-                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                            disabled={currentPage === totalPages}
-                            className="px-4 py-2 text-sm font-medium text-white bg-[#2d2d2f] rounded-lg disabled:opacity-30 hover:bg-[#3d3d3f] transition-colors"
-                          >
-                            Next
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            </>
+            <div className="text-center py-20 bg-[#1c1c1e] rounded-3xl border border-[#2d2d2f] mt-8">
+              <p className="text-lg font-medium text-white mb-2">Welcome to Lanouzhi.lab!</p>
+              <p className="text-sm opacity-80 text-gray-400 mb-6">Explore the homepage to find and purchase amazing 3D models.</p>
+              <button onClick={() => navigate('/')} className="bg-[#FF7518] hover:bg-orange-600 text-white px-6 py-2 rounded-full text-sm font-bold transition-colors">Explore Models</button>
+            </div>
           )}
 
+          {/* Edit Modal (ซ่อนไว้เพื่อประหยัดพื้นที่ โค้ดส่วนนี้เหมือนเดิม) */}
           {editingModel && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">

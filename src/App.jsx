@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HomePage from './HomePage';
 import AuthPage from './AuthPage';
-import ProfilePage from './ProfilePage'; // 👇 1. Import ไฟล์ใหม่
+import ProfilePage from './ProfilePage';
 import DetailPage from './DetailPage';
+import OrdersPage from './OrdersPage';
 
 function App() {
   return (
@@ -10,9 +11,9 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/auth" element={<AuthPage />} />
-        {/* 👇 2. เพิ่ม Route สำหรับหน้า Profile */}
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/model/:id" element={<DetailPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
       </Routes>
     </BrowserRouter>
   );

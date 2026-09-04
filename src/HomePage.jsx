@@ -63,7 +63,6 @@ const HomePage = () => {
     }
   };
 
-  // 🌟 ปลดล็อก: ดึงออเดอร์สำหรับทุกคนที่ล็อกอิน (แอดมินดึงทั้งหมด ลูกค้าดึงเฉพาะของตัวเอง)
   const fetchOrders = async () => {
     if (!token) return;
     try {
@@ -84,7 +83,6 @@ const HomePage = () => {
     fetchOrders(); 
   }, []);
 
-  // 🌟 นับแจ้งเตือน (โชว์ให้เฉพาะ Admin)
   const pendingOrdersCount = currentUserRole === 'admin' 
     ? orders.filter(order => order.status === 'pending').length 
     : 0;
@@ -241,16 +239,15 @@ const HomePage = () => {
                 My Profile
               </button>
 
-              {/* 🌟 ปุ่ม Manage Orders / My Purchases (โชว์ให้ทุกคนที่ล็อกอิน) 🌟 */}
+              {/* 🌟 ปุ่มวิ่งไปหน้า OrdersPage โดยตรง 🌟 */}
               <button 
-                onClick={() => navigate('/profile', { state: { openOrders: true } })} 
+                onClick={() => navigate('/orders')} 
                 className="w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50"
               >
                 <div className="flex items-center gap-3">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                   {currentUserRole === 'admin' ? 'Manage Orders' : 'My Purchases'}
                 </div>
-                {/* 🌟 ป้ายแจ้งเตือนสีแดง (โชว์เฉพาะ Admin) 🌟 */}
                 {currentUserRole === 'admin' && pendingOrdersCount > 0 && (
                   <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
                     {pendingOrdersCount}
@@ -286,6 +283,7 @@ const HomePage = () => {
       {/* ================= 2. พื้นที่เนื้อหาหลัก ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
 
+        {/* ================= Top Navbar ================= */}
         <nav className="bg-[#121212] sticky top-0 z-40 px-6 py-4 flex items-center justify-between gap-6">
           <div className="flex md:hidden items-center gap-2 cursor-pointer">
             <img src={logoImg} alt="Logo" className="w-8 h-8 object-contain rounded-md" />
