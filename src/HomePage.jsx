@@ -90,7 +90,7 @@ const HomePage = () => {
       });
       if (res.ok) {
         const likedIds = await res.json();
-        setLikedModels(new Set(likedIds)); // เก็บเป็น Set เพื่อให้ค้นหาง่ายและเร็วขึ้น
+        setLikedModels(new Set(likedIds)); 
       }
     } catch (err) {
       console.error('Error fetching likes:', err);
@@ -100,7 +100,7 @@ const HomePage = () => {
   useEffect(() => {
     fetchModels();
     fetchOrders(); 
-    fetchUserLikes(); // เรียกใช้ตอนโหลดหน้าแรก
+    fetchUserLikes(); 
   }, []);
 
   const pendingOrdersCount = currentUserRole === 'admin' 
@@ -109,7 +109,7 @@ const HomePage = () => {
 
   // 🌟 ฟังก์ชันจัดการเมื่อกดปุ่มหัวใจ 🌟
   const handleLike = async (e, modelId) => {
-    e.stopPropagation(); // ป้องกันไม่ให้การกดหัวใจไปทำให้เปิดหน้า DetailPage
+    e.stopPropagation(); 
     if (!isLoggedIn) {
       alert('Please log in to like this model.');
       navigate('/auth');
@@ -118,7 +118,6 @@ const HomePage = () => {
 
     const isCurrentlyLiked = likedModels.has(modelId);
     
-    // อัปเดต UI ให้เปลี่ยนสีก่อนล่วงหน้าเพื่อความลื่นไหล (Optimistic UI)
     setLikedModels(prev => {
       const newSet = new Set(prev);
       if (isCurrentlyLiked) newSet.delete(modelId);
@@ -126,7 +125,6 @@ const HomePage = () => {
       return newSet;
     });
 
-    // อัปเดตตัวเลขยอดไลก์บนหน้าจอทันที
     setModels(prevModels => 
       prevModels.map(model => {
         if (model.id === modelId) {
@@ -139,7 +137,6 @@ const HomePage = () => {
       })
     );
 
-    // ยิง API ไปอัปเดตที่หลังบ้าน
     try {
       const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/models/${modelId}/like`, {
         method: 'POST',
@@ -147,12 +144,10 @@ const HomePage = () => {
       });
       
       if (!res.ok) {
-        // ถ้ายิง API ไม่ผ่าน (มีปัญหา) ให้ย้อนค่า UI กลับไปเป็นเหมือนเดิม
         throw new Error('Failed to update like');
       }
     } catch (error) {
       console.error('Error updating like:', error);
-      // Revert UI ย้อนกลับถ้าเกิด Error
       setLikedModels(prev => {
         const newSet = new Set(prev);
         if (isCurrentlyLiked) newSet.add(modelId);
@@ -318,18 +313,12 @@ const HomePage = () => {
           
           {isLoggedIn && (
             <>
-              <button
-                onClick={() => navigate('/profile')}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors mt-2"
-              >
+              <button onClick={() => navigate('/profile')} className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors mt-2">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 My Profile
               </button>
 
-              <button 
-                onClick={() => navigate('/orders')} 
-                className="w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50"
-              >
+              <button onClick={() => navigate('/orders')} className="w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50">
                 <div className="flex items-center gap-3">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                   {currentUserRole === 'admin' ? 'Manage Orders' : 'My Purchases'}
@@ -339,6 +328,12 @@ const HomePage = () => {
                     {pendingOrdersCount}
                   </span>
                 )}
+              </button>
+
+              {/* 🌟 ปุ่ม My Favorites (เพิ่มใหม่ตรงนี้!) 🌟 */}
+              <button onClick={() => navigate('/favorites')} className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors mt-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                My Favorites
               </button>
             </>
           )}
