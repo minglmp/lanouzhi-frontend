@@ -20,6 +20,9 @@ const HomePage = () => {
   const [models, setModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [orders, setOrders] = useState([]);
+  
+  // 🌟 State สำหรับเก็บรายการโมเดลที่ยูสเซอร์คนนี้เคยกดไลก์
+  const [likedModels, setLikedModels] = useState(new Set());
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -78,14 +81,98 @@ const HomePage = () => {
     }
   };
 
+  // 🌟 ดึงข้อมูลประวัติการกดไลก์ของยูสเซอร์ที่ล็อกอินอยู่
+  const fetchUserLikes = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/user/likes', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const likedIds = await res.json();
+        setLikedModels(new Set(likedIds)); // เก็บเป็น Set เพื่อให้ค้นหาง่ายและเร็วขึ้น
+      }
+    } catch (err) {
+      console.error('Error fetching likes:', err);
+    }
+  };
+
   useEffect(() => {
     fetchModels();
     fetchOrders(); 
+    fetchUserLikes(); // เรียกใช้ตอนโหลดหน้าแรก
   }, []);
 
   const pendingOrdersCount = currentUserRole === 'admin' 
     ? orders.filter(order => order.status === 'pending').length 
     : 0;
+
+  // 🌟 ฟังก์ชันจัดการเมื่อกดปุ่มหัวใจ 🌟
+  const handleLike = async (e, modelId) => {
+    e.stopPropagation(); // ป้องกันไม่ให้การกดหัวใจไปทำให้เปิดหน้า DetailPage
+    if (!isLoggedIn) {
+      alert('Please log in to like this model.');
+      navigate('/auth');
+      return;
+    }
+
+    const isCurrentlyLiked = likedModels.has(modelId);
+    
+    // อัปเดต UI ให้เปลี่ยนสีก่อนล่วงหน้าเพื่อความลื่นไหล (Optimistic UI)
+    setLikedModels(prev => {
+      const newSet = new Set(prev);
+      if (isCurrentlyLiked) newSet.delete(modelId);
+      else newSet.add(modelId);
+      return newSet;
+    });
+
+    // อัปเดตตัวเลขยอดไลก์บนหน้าจอทันที
+    setModels(prevModels => 
+      prevModels.map(model => {
+        if (model.id === modelId) {
+          return {
+            ...model,
+            likes: isCurrentlyLiked ? Math.max(0, (model.likes || 0) - 1) : (model.likes || 0) + 1
+          };
+        }
+        return model;
+      })
+    );
+
+    // ยิง API ไปอัปเดตที่หลังบ้าน
+    try {
+      const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/models/${modelId}/like`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (!res.ok) {
+        // ถ้ายิง API ไม่ผ่าน (มีปัญหา) ให้ย้อนค่า UI กลับไปเป็นเหมือนเดิม
+        throw new Error('Failed to update like');
+      }
+    } catch (error) {
+      console.error('Error updating like:', error);
+      // Revert UI ย้อนกลับถ้าเกิด Error
+      setLikedModels(prev => {
+        const newSet = new Set(prev);
+        if (isCurrentlyLiked) newSet.add(modelId);
+        else newSet.delete(modelId);
+        return newSet;
+      });
+      setModels(prevModels => 
+        prevModels.map(model => {
+          if (model.id === modelId) {
+            return {
+              ...model,
+              likes: isCurrentlyLiked ? (model.likes || 0) + 1 : Math.max(0, (model.likes || 0) - 1)
+            };
+          }
+          return model;
+        })
+      );
+      alert('Network error. Could not update like status.');
+    }
+  };
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
@@ -239,7 +326,6 @@ const HomePage = () => {
                 My Profile
               </button>
 
-              {/* 🌟 ปุ่มวิ่งไปหน้า OrdersPage โดยตรง 🌟 */}
               <button 
                 onClick={() => navigate('/orders')} 
                 className="w-full flex items-center justify-between px-3 py-2.5 mt-2 rounded-lg font-medium text-sm transition-colors text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50"
@@ -283,7 +369,6 @@ const HomePage = () => {
       {/* ================= 2. พื้นที่เนื้อหาหลัก ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
 
-        {/* ================= Top Navbar ================= */}
         <nav className="bg-[#121212] sticky top-0 z-40 px-6 py-4 flex items-center justify-between gap-6">
           <div className="flex md:hidden items-center gap-2 cursor-pointer">
             <img src={logoImg} alt="Logo" className="w-8 h-8 object-contain rounded-md" />
@@ -350,6 +435,23 @@ const HomePage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredModels.map((model) => (
                 <div key={model.id} onClick={() => navigate(`/model/${model.id}`)} className="group bg-gray-900 rounded-3xl overflow-hidden border border-gray-800 shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col relative cursor-pointer">
+                  
+                  {/* 🌟 ปุ่มหัวใจ (Like Button) 🌟 */}
+                  <div className="absolute top-3 right-3 z-20 flex gap-2">
+                    <button 
+                      onClick={(e) => handleLike(e, model.id)} 
+                      className={`p-2 rounded-full shadow-md transition-all duration-300 ${
+                        likedModels.has(model.id) 
+                          ? 'bg-red-500/20 text-red-500 hover:bg-red-500/40 border border-red-500/30' 
+                          : 'bg-black/50 text-gray-300 hover:bg-black/70 border border-gray-700'
+                      }`}
+                    >
+                      <svg className={`w-5 h-5 ${likedModels.has(model.id) ? 'fill-current' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    </button>
+                  </div>
+
                   <div className="relative aspect-[4/3] overflow-hidden bg-gray-800">
                     <img src={parseImages(model.image_url)[0]} alt={model.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80' }} />
                     {parseImages(model.image_url).length > 1 && (
@@ -360,12 +462,21 @@ const HomePage = () => {
                   </div>
                   <div className="p-4 flex-1 flex flex-col">
                     <h3 className="text-white font-semibold text-lg truncate mb-1">{model.title}</h3>
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center text-[10px] font-bold text-gray-300">
-                        {model.author ? model.author.charAt(0).toUpperCase() : 'U'}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center text-[10px] font-bold text-gray-300">
+                          {model.author ? model.author.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                        <span className="text-sm text-gray-400 truncate">{model.author}</span>
                       </div>
-                      <span className="text-sm text-gray-400 truncate">{model.author}</span>
+                      
+                      {/* 🌟 แสดงยอดไลก์ตรงนี้ 🌟 */}
+                      <div className="flex items-center gap-1.5 text-gray-400 text-xs font-semibold bg-gray-800/50 px-2.5 py-1 rounded-full border border-gray-800">
+                        <svg className="w-3.5 h-3.5 text-red-400 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        {model.likes || 0}
+                      </div>
                     </div>
+
                     <div className="mt-auto">
                       <button onClick={(e) => { e.stopPropagation(); navigate(`/model/${model.id}`); }} className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl transition-colors shadow-sm hover:shadow-md flex justify-center items-center gap-2">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
