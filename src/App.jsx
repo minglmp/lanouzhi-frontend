@@ -5,6 +5,7 @@ import ProfilePage from './ProfilePage';
 import DetailPage from './DetailPage';
 import OrdersPage from './OrdersPage';
 import FavoritesPage from './FavoritesPage';
+import ChatPage from './ChatPage';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/model/:id" element={<DetailPage />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
+        <Route path="/chat" element={<ChatPage />} />
       </Routes>
     </BrowserRouter>
   );
