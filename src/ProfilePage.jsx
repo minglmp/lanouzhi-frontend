@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import Topbar from './Topbar';
 import logoImg from './assets/logo2.jpeg';
 
 const CATEGORIES = ['All', 'New', 'Art', 'Gadgets', 'Toys'];
@@ -208,12 +209,7 @@ const ProfilePage = () => {
       <Sidebar activeTab="profile" />
 
       <div className="flex-1 flex flex-col min-w-0 pb-12">
-        <nav className="bg-[#18181a] sticky top-0 z-40 px-6 py-4 flex items-center justify-end gap-6 border-b border-[#2d2d2f]">
-          <button onClick={() => navigate('/')} className="md:hidden text-gray-400 hover:text-white">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-          </button>
-          <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 text-sm font-medium transition-colors">Logout</button>
-        </nav>
+        <Topbar />
 
         <main className="w-full max-w-5xl mx-auto px-6 mt-8">
           <div className="bg-[#1c1c1e] rounded-3xl p-8 mb-10 border border-[#2d2d2f] flex items-center gap-6 shadow-lg">

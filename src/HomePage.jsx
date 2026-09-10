@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import Topbar from './Topbar';
 import logoImg from './assets/logo2.jpeg';
 
 const CATEGORIES = ['All', 'New', 'Art', 'Gadgets', 'Toys'];
@@ -301,42 +302,12 @@ const HomePage = () => {
       {/* ================= 2. พื้นที่เนื้อหาหลัก ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
 
-        <nav className="bg-[#121212] sticky top-0 z-40 px-6 py-4 flex items-center justify-between gap-6">
-          <div className="flex md:hidden items-center gap-2 cursor-pointer">
-            <img src={logoImg} alt="Logo" className="w-8 h-8 object-contain rounded-md" />
-          </div>
-
-          <div className="flex-1 max-w-4xl">
-            <div className="relative w-full">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search models or users name..."
-                className="w-full bg-[#262628] border border-transparent text-gray-200 rounded-full py-2 pl-11 pr-10 text-sm focus:bg-[#2d2d2f] focus:border-[#444] outline-none transition-all placeholder-gray-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {isLoggedIn ? (
-              <>
-                {(currentUserRole === 'admin' || currentUserRole === 'creator') && (
-                  <button onClick={() => setIsUploadModalOpen(true)} className="hidden sm:block bg-[#262628] hover:bg-[#333] text-white px-5 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700">
-                    + Upload
-                  </button>
-                )}
-                <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 text-sm font-medium transition-colors">
-                  Logout
-                </button>
-              </>
-            ) : (
-              <button onClick={() => navigate('/auth')} className="bg-[#262628] hover:bg-[#333] text-white px-6 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700 shadow-sm">
-                Log In
-              </button>
-            )}
-          </div>
-        </nav>
+      <Topbar 
+        showSearch={true} 
+        searchQuery={searchQuery} 
+        setSearchQuery={setSearchQuery} 
+        onUploadSuccess={fetchModels} 
+      />
 
         {/* ================= Main Content ================= */}
         <main className="w-full px-6 mt-4">
@@ -422,61 +393,6 @@ const HomePage = () => {
           )}
         </main>
       </div>
-
-      {/* ================= Upload Modal ================= */}
-      {isUploadModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity">
-          <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl relative animate-in fade-in zoom-in duration-200">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Upload New Model 🎨</h2>
-            {uploadError && <div className="mb-6 p-4 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">{uploadError}</div>}
-            <form onSubmit={handleUploadSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Name</label>
-                <input type="text" required value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Articulated Dragon" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1.5">Description (Optional)</label>
-                <textarea rows="3" value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Tell us about this model..." className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none resize-none"></textarea>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1.5">Price (LAK)</label>
-                <div className="relative">
-                  <input type="number" min="0" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} placeholder="e.g., 50000 (Leave 0 for Free)" className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-12 py-3 text-sm outline-none" />
-                  <span className="absolute right-4 top-3 text-gray-400 text-sm font-bold">₭</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Images (Up to 4)</label>
-                <input type="file" accept="image/*" multiple onChange={handleImageChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 transition-all outline-none cursor-pointer" />
-                {newImagePreviews.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2 mt-4">
-                    {newImagePreviews.map((img, index) => (
-                      <div key={index} className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
-                        <img src={img} alt={`Preview ${index}`} className="w-full h-full object-cover" />
-                        <button type="button" onClick={() => handleRemoveImage(index)} className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1 hover:bg-red-500 transition-colors">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1.5">Category</label>
-                <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none">
-                  {CATEGORIES.filter(c => c !== 'All' && c !== 'New').map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="flex gap-3 mt-8">
-                <button type="button" onClick={() => { setIsUploadModalOpen(false); setNewImageFiles([]); setNewImagePreviews([]); }} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3.5 rounded-xl transition-all">Cancel</button>
-                <button type="submit" disabled={isUploading || newImageFiles.length === 0} className={`flex-1 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md ${ (isUploading || newImageFiles.length === 0) ? 'bg-gray-600 text-gray-400 cursor-not-allowed shadow-none' : 'bg-gray-900 hover:bg-black hover:shadow-lg' }`}>
-                  {isUploading ? 'Uploading...' : 'Upload Now'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

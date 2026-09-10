@@ -155,7 +155,7 @@ const Sidebar = ({ activeTab }) => {
             </a>
             
           </div>
-          <div className="text-[11px] text-gray-600 font-medium text-center">
+          <div className="text-[11px] text-gray-600 font-medium">
             © 2026 Lanouzhi.lab
           </div>
         </div>
