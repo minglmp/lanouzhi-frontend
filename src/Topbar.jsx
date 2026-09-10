@@ -117,8 +117,17 @@ const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSucce
   return (
     <>
       <nav className="bg-[#121212] flex-shrink-0 sticky top-0 z-40 px-6 py-4 flex items-center justify-between gap-6 border-b border-[#2d2d2f]">
-        <div className="flex md:hidden items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <img src={logoImg} alt="Logo" className="w-8 h-8 object-contain rounded-md" />
+        <div className="flex items-center gap-4">
+          {showBack ? (
+            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-medium">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+              Back
+            </button>
+          ) : (
+            <div className="flex md:hidden items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
+              <img src={logoImg} alt="Logo" className="w-8 h-8 object-contain rounded-md" />
+            </div>
+          )}
         </div>
 
         {/* ช่องค้นหา (แสดงเฉพาะหน้าที่มีการส่งค่า showSearch = true) */}

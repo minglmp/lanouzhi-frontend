@@ -162,7 +162,7 @@ const DetailPage = () => {
 
       {/* ================= Main Content ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
-        <Topbar />
+        <Topbar showBack={true} />
 
         <main className="w-full max-w-6xl mx-auto px-6 mt-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
