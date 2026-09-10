@@ -84,6 +84,18 @@ const OrdersPage = () => {
   const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
   const totalPages = Math.ceil(orders.length / ordersPerPage);
 
+  // 🌟 ฟังก์ชันแปลงวันที่ให้ดูอ่านง่าย (เช่น 10 Sep 2026)
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    // แปลงรูปแบบที่มาจาก SQLite (YYYY-MM-DD HH:MM:SS) ให้ Date ของ JavaScript รู้จัก
+    const date = new Date(dateString.replace(' ', 'T') + 'Z');
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
   if (!currentUser) return null;
 
   return (
@@ -106,7 +118,6 @@ const OrdersPage = () => {
             My Profile
           </button>
 
-          {/* ปุ่มนี้จะ Active เพราะอยู่หน้า Orders */}
           <button className="w-full flex items-center justify-between px-3 py-2.5 mt-2 bg-[#2d2d2f] text-white rounded-lg font-medium text-sm transition-colors">
             <div className="flex items-center gap-3">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
@@ -118,11 +129,11 @@ const OrdersPage = () => {
               </span>
             )}
           </button>
-          {/* 🌟 ปุ่ม My Favorites (เพิ่มใหม่ตรงนี้!) 🌟 */}
-              <button onClick={() => navigate('/favorites')} className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors mt-2">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                My Favorites
-              </button>
+
+          <button onClick={() => navigate('/favorites')} className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-white hover:bg-[#2d2d2f]/50 rounded-lg font-medium text-sm transition-colors mt-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+            My Favorites
+          </button>
         </nav>
         {/* Footer */}
         <div className="mt-auto p-4 border-t border-[#2d2d2f]">
@@ -182,6 +193,10 @@ const OrdersPage = () => {
                       <thead className="text-xs text-gray-400 uppercase bg-black/40 border-b border-[#2d2d2f]">
                         <tr>
                           {currentUserRole === 'admin' ? <th className="px-6 py-4">Buyer</th> : <th className="px-6 py-4">Order ID</th>}
+                          
+                          {/* 🌟 เพิ่มคอลัมน์ DATE ตรงนี้ 🌟 */}
+                          <th className="px-6 py-4">Date</th>
+                          
                           <th className="px-6 py-4">Model</th>
                           <th className="px-6 py-4 text-center">Status</th>
                           <th className="px-6 py-4 text-center">{currentUserRole === 'admin' ? 'Action' : 'Note'}</th>
@@ -195,7 +210,13 @@ const OrdersPage = () => {
                             ) : (
                               <td className="px-6 py-4 font-medium text-gray-400">#{order.id.substring(0, 8).toUpperCase()}</td>
                             )}
-                            <td className="px-6 py-4 truncate max-w-[150px]">{order.model_title || order.model_id}</td>
+                            
+                            {/* 🌟 แสดงวันที่สั่งซื้อ 🌟 */}
+                            <td className="px-6 py-4 text-gray-400 whitespace-nowrap">
+                              {formatDate(order.created_at)}
+                            </td>
+
+                            <td className="px-6 py-4 truncate max-w-[150px] text-gray-200">{order.model_title || order.model_id}</td>
                             <td className="px-6 py-4 text-center">
                               <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
                                 order.status === 'approved' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
@@ -215,7 +236,7 @@ const OrdersPage = () => {
                                 )
                               ) : (
                                 <span className="text-gray-400 text-xs">
-                                  {order.status === 'approved' ? '✅ Ready to download' : order.status === 'rejected' ? '❌ Invalid slip' : '⏳ Waiting for admin'}
+                                  {order.status === 'approved' ? '✅ Ready' : order.status === 'rejected' ? '❌ Invalid slip' : '⏳ Waiting for admin'}
                                 </span>
                               )}
                             </td>
