@@ -4,7 +4,7 @@ import logoImg from './assets/logo2.jpeg';
 
 const CATEGORIES = ['Art', 'Gadgets', 'Toys'];
 
-const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSuccess }) => {
+const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSuccess, showBack = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const token = localStorage.getItem('maker_token');
