@@ -28,6 +28,9 @@ const DetailPage = () => {
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
+  // 🌟 State สำหรับ Popup สั่งซื้อสำเร็จ
+  const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+
   const token = localStorage.getItem('maker_token');
   const isLoggedIn = !!token;
   let currentUser = null;
@@ -122,9 +125,8 @@ const DetailPage = () => {
       });
       
       if (res.ok) {
-        alert('🎉 Order placed successfully! Waiting for admin approval.');
+        setShowOrderSuccess(true);
         setIsCheckoutModalOpen(false);
-        navigate('/orders'); 
       } else {
         alert('Failed to place order.');
       }
@@ -323,6 +325,36 @@ const DetailPage = () => {
               </button>
 
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= 🌟 CUSTOM SUCCESS POPUP (เด้งตอนสั่งซื้อสำเร็จ) 🌟 ================= */}
+      {showOrderSuccess && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+          <div className="bg-[#1c1c1e] border border-[#2d2d2f] rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center transform transition-all animate-in zoom-in duration-300">
+            
+            {/* ไอคอนเครื่องหมายถูกสีเขียว (สไตล์ Neon) */}
+            <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.2)]">
+              <svg className="w-10 h-10 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            
+            <h3 className="text-2xl font-extrabold text-white mb-2">Order Placed!</h3>
+            <p className="text-gray-400 mb-8 text-sm">
+              Your order has been placed successfully.<br/>Please wait for admin approval.
+            </p>
+            
+            <button 
+              onClick={() => {
+                setShowOrderSuccess(false);
+                navigate('/orders'); // 🌟 พอกดปุ่มปุ๊บ ให้พาไปหน้า My Purchases อัตโนมัติ
+              }} 
+              className="w-full bg-[#FF7518] hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-md"
+            >
+              View My Purchases
+            </button>
           </div>
         </div>
       )}
