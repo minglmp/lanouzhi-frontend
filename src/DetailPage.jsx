@@ -30,6 +30,7 @@ const DetailPage = () => {
 
   // 🌟 State สำหรับ Popup สั่งซื้อสำเร็จ
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   const token = localStorage.getItem('maker_token');
   const isLoggedIn = !!token;
@@ -104,8 +105,7 @@ const DetailPage = () => {
 
   const openCheckoutModal = () => {
     if (!isLoggedIn) {
-      alert('Please log in to place an order.');
-      navigate('/auth');
+      setShowLoginPrompt(true);
       return;
     }
     setIsCheckoutModalOpen(true);
@@ -355,6 +355,40 @@ const DetailPage = () => {
             >
               View My Purchases
             </button>
+          </div>
+        </div>
+      )}
+      {/* ================= 🌟 LOGIN PROMPT POPUP (เด้งเตือนให้ล็อกอินตอนกดสั่งซื้อ) 🌟 ================= */}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+          <div className="bg-[#1c1c1e] border border-[#2d2d2f] rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center transform transition-all animate-in zoom-in duration-300">
+            
+            {/* ไอคอนแม่กุญแจ (Login) */}
+            <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+              <svg className="w-10 h-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            
+            <h3 className="text-2xl font-extrabold text-white mb-2">Login Required</h3>
+            <p className="text-gray-400 mb-8 text-sm">
+              Please log in or create an account<br/>to place an order for this model.
+            </p>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowLoginPrompt(false)} 
+                className="flex-1 bg-[#2d2d2f] hover:bg-[#3d3d3f] text-white font-bold py-3.5 rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => navigate('/auth')} 
+                className="flex-1 bg-[#FF7518] hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-md"
+              >
+                Log In
+              </button>
+            </div>
           </div>
         </div>
       )}
