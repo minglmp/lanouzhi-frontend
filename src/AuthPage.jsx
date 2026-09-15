@@ -94,7 +94,7 @@ const AuthPage = () => {
       const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: fullForgotPhone, newPassword: forgotNewPassword })
+        body: JSON.stringify({ phone_number: fullForgotPhone, newPassword: forgotNewPassword })
       });
       
       const data = await res.json();
