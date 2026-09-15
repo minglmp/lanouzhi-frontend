@@ -21,6 +21,8 @@ const AuthPage = () => {
   const [forgotPhone, setForgotPhone] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [isResetting, setIsResetting] = useState(false);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [forgotError, setForgotError] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('maker_token');
@@ -78,16 +80,14 @@ const AuthPage = () => {
   // 🌟 4. ฟังก์ชันจัดการลืมรหัสผ่าน (เพิ่มใหม่)
   const handleForgotPassword = async (e) => {
     e.preventDefault();
+    setForgotError(''); // เคลียร์ข้อความแจ้งเตือนเก่า
+
     if (!forgotPhone || !forgotNewPassword) {
-      setErrorMessage('Please fill in all fields');
+      setForgotError('Please fill in all fields');
       return;
     }
     
     setIsResetting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
-    
-    // แปลงเบอร์โทรให้มี +85620 นำหน้า เพื่อให้ตรงกับในฐานข้อมูล
     const fullForgotPhone = `+85620${forgotPhone}`;
     
     try {
@@ -100,16 +100,18 @@ const AuthPage = () => {
       const data = await res.json();
       
       if (res.ok) {
-        alert('🎉 Password reset successfully! You can now log in with your new password.');
+        // 🎉 สำเร็จ! ปิดหน้าต่างเดิม แล้วเปิด Popup สวยๆ แทน
+        setShowSuccessAlert(true);
         setIsForgotModalOpen(false);
         setForgotPhone('');
         setForgotNewPassword('');
-        setPassword(''); // เคลียร์รหัสผ่านเดิมในหน้า Login
+        setPassword(''); 
       } else {
-        alert(data.message || 'Failed to reset password');
+        // ❌ ไม่สำเร็จ! แสดงข้อความ Error สีแดง
+        setForgotError(data.message || 'Failed to reset password');
       }
     } catch (err) {
-      alert('Server error occurred.');
+      setForgotError('Server error occurred.');
     } finally {
       setIsResetting(false);
     }
@@ -266,6 +268,12 @@ const AuthPage = () => {
             {/* Form */}
             <div className="p-6">
               <p className="text-sm text-gray-500 mb-6">Enter your registered phone number and a new password.</p>
+              {forgotError && (
+                <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  {forgotError}
+                </div>
+              )}
               
               <form onSubmit={handleForgotPassword} className="space-y-5">
                 
@@ -310,6 +318,32 @@ const AuthPage = () => {
                 </button>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= 🌟 CUSTOM SUCCESS POPUP (เด้งตอนเปลี่ยนรหัสผ่านสำเร็จ) 🌟 ================= */}
+      {showSuccessAlert && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center transform transition-all animate-in zoom-in duration-300">
+            {/* ไอคอนเครื่องหมายถูกสีเขียว */}
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
+              <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            
+            <h3 className="text-2xl font-extrabold text-gray-900 mb-2">Success!</h3>
+            <p className="text-gray-500 mb-8 text-sm">
+              Password reset successfully!<br/>You can now log in with your new password.
+            </p>
+            
+            <button 
+              onClick={() => setShowSuccessAlert(false)} 
+              className="w-full bg-[#111827] hover:bg-[#1f2937] text-white font-bold py-3.5 rounded-xl transition-all shadow-md"
+            >
+              Continue to Login
+            </button>
           </div>
         </div>
       )}
