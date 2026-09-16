@@ -198,7 +198,7 @@ const DetailPage = () => {
 
             {/* ขวา: รายละเอียดและการสั่งซื้อ */}
             <div className="flex flex-col">
-              <div className="w-full md:w-1/2 lg:w-1/3 flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-4 mb-2">
                 <h1 className="text-4xl font-bold text-white leading-tight">{model.title}</h1>
                 <button 
                   onClick={handleLike} 

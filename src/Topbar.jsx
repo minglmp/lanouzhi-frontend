@@ -7,6 +7,7 @@ const CATEGORIES = ['Art', 'Gadgets', 'Toys'];
 const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSuccess, showBack = false }) => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState(null);
   const location = useLocation();
   const token = localStorage.getItem('maker_token');
   const isLoggedIn = !!token;
@@ -110,6 +111,19 @@ const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSucce
     }
   };
 
+  useEffect(() => {
+    const token = localStorage.getItem('maker_token');
+    if (token) {
+      try {
+        // ถอดรหัส JWT Token เพื่อดึงข้อมูล payload (โดยไม่ต้องใช้ไลบรารีเพิ่ม)
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUserRole(payload.role); 
+      } catch (e) {
+        console.error("Error decoding token:", e);
+      }
+    }
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('maker_token');
     window.location.href = '/';
@@ -159,9 +173,11 @@ const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSucce
         <div className="flex items-center gap-4">
           {isLoggedIn ? (
             <>
+            {(userRole === 'admin' || userRole === 'creator') && (
               <button onClick={() => setIsUploadModalOpen(true)} className="bg-[#262628] hover:bg-[#333] text-white px-5 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700 shadow-sm">
                 + Upload
               </button>
+              )}
               <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 text-sm font-medium transition-colors">
                 Logout
               </button>
