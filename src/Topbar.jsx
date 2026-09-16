@@ -6,6 +6,7 @@ const CATEGORIES = ['Art', 'Gadgets', 'Toys'];
 
 const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSuccess, showBack = false }) => {
   const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const token = localStorage.getItem('maker_token');
   const isLoggedIn = !!token;
@@ -144,6 +145,15 @@ const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSucce
             </div>
           )}
         </div>
+        {/* 🌟 ปุ่มแฮมเบอร์เกอร์ (แสดงเฉพาะมือถือ md:hidden) */}
+        <button 
+          onClick={() => setIsMobileMenuOpen(true)} 
+          className="md:hidden flex items-center justify-center text-gray-400 hover:text-white p-1"
+        >
+          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
 
         {/* ปุ่มด้านขวา */}
         <div className="flex items-center gap-4">
@@ -215,6 +225,60 @@ const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSucce
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ================= 🌟 MOBILE MENU OVERLAY (เมนูมือถือ) 🌟 ================= */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[100] bg-[#121212] flex flex-col animate-in fade-in slide-in-from-right-8 duration-300">
+          
+          {/* Header ของเมนู */}
+          <div className="flex items-center justify-between p-6 border-b border-[#2d2d2f]">
+            <div className="flex items-center gap-3">
+              <span className="font-bold text-xl text-white">Menu</span>
+            </div>
+            <button onClick={() => setIsMobileMenuOpen(false)} className="text-gray-400 hover:text-white bg-[#2d2d2f] rounded-full p-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+
+          {/* รายการเมนูต่างๆ */}
+          <div className="flex flex-col p-6 gap-2 text-lg font-medium text-gray-300 overflow-y-auto">
+            <button onClick={() => { navigate('/'); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 hover:bg-[#2d2d2f] hover:text-white p-4 rounded-xl text-left transition-all">
+              🏠 Home
+            </button>
+            <button onClick={() => { navigate('/orders'); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 hover:bg-[#2d2d2f] hover:text-white p-4 rounded-xl text-left transition-all">
+              📦 My Purchases
+            </button>
+            <button onClick={() => { navigate('/chat'); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 hover:bg-[#2d2d2f] hover:text-white p-4 rounded-xl text-left transition-all">
+              💬 Chat Messages
+            </button>
+            <button onClick={() => { navigate('/profile'); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 hover:bg-[#2d2d2f] hover:text-white p-4 rounded-xl text-left transition-all">
+              👤 My Profile
+            </button>
+            
+            <div className="h-px bg-[#2d2d2f] my-4"></div>
+            
+            {/* ปุ่ม Login / Logout เช็กจาก Token */}
+            {localStorage.getItem('maker_token') ? (
+              <button 
+                onClick={() => { 
+                  localStorage.removeItem('maker_token'); 
+                  setIsMobileMenuOpen(false); 
+                  navigate('/auth'); 
+                }} 
+                className="flex items-center gap-4 text-red-400 hover:bg-red-500/10 hover:text-red-300 p-4 rounded-xl text-left transition-all"
+              >
+                🚪 Log Out
+              </button>
+            ) : (
+              <button 
+                onClick={() => { navigate('/auth'); setIsMobileMenuOpen(false); }} 
+                className="flex items-center justify-center gap-3 bg-[#FF7518] hover:bg-orange-600 text-white p-4 rounded-xl text-center shadow-md transition-all mt-4"
+              >
+                🔑 Log In / Sign Up
+              </button>
+            )}
           </div>
         </div>
       )}
