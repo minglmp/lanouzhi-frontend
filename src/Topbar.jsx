@@ -178,12 +178,12 @@ const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSucce
                 + Upload
               </button>
               )}
-              <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 text-sm font-medium transition-colors">
+              <button onClick={handleLogout} className="hidden md:block text-gray-400 hover:text-red-500 text-sm font-medium transition-colors">
                 Logout
               </button>
             </>
           ) : (
-            <button onClick={() => navigate('/auth')} className="bg-[#262628] hover:bg-[#333] text-white px-6 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700 shadow-sm">
+            <button onClick={() => navigate('/auth')} className="hidden md:block bg-[#262628] hover:bg-[#333] text-white px-6 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700 shadow-sm">
               Log In
             </button>
           )}
