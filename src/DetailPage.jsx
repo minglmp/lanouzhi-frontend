@@ -81,8 +81,7 @@ const DetailPage = () => {
 
   const handleLike = async () => {
     if (!isLoggedIn) {
-      alert('Please log in to like this model.');
-      navigate('/auth');
+      setShowLoginPrompt(true); // 🌟 เปิด Popup สวยๆ แทน alert
       return;
     }
 
@@ -159,9 +158,9 @@ const DetailPage = () => {
 
   return (
     <div className="flex min-h-screen bg-[#121212] font-sans relative">
-      
+      <div className="hidden md:flex w-64 flex-shrink-0">
       <Sidebar activeTab="" />
-
+      </div>
       {/* ================= Main Content ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
         <Topbar showBack={true} />
