@@ -12,7 +12,7 @@ const ChatPage = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [totalUnread, setTotalUnread] = useState(0); // 🌟 นับยอดแจ้งเตือนทั้งหมด
+  const [totalUnread, setTotalUnread] = useState(0); 
   const messagesEndRef = useRef(null);
 
   const token = localStorage.getItem('maker_token');
@@ -40,7 +40,6 @@ const ChatPage = () => {
     scrollToBottom();
   }, [messages]);
 
-  // ดึงรายชื่อผู้ติดต่อ + ยอด Unread
   const fetchContacts = async () => {
     if (!token) return;
     try {
@@ -51,11 +50,11 @@ const ChatPage = () => {
         const data = await res.json();
         setContacts(data);
         
-        // คำนวณยอดแจ้งเตือนรวม
         const unreadCount = data.reduce((acc, curr) => acc + curr.unread, 0);
         setTotalUnread(unreadCount);
         
-        if (data.length > 0 && !activeContact) setActiveContact(data[0].name);
+        // คอมเมนต์บรรทัดล่างนี้ไว้ เพื่อให้มือถือไม่ถูกบังคับเปิดแชทแรกอัตโนมัติ
+        // if (data.length > 0 && !activeContact) setActiveContact(data[0].name);
       }
     } catch (err) {
       console.error(err);
@@ -79,7 +78,6 @@ const ChatPage = () => {
 
   useEffect(() => {
     fetchContacts();
-    // 🌟 ดึงข้อมูลอัปเดตทุกๆ 3 วินาที (เพื่อให้ป้ายแดงเด้งแบบ Real-time)
     const interval = setInterval(() => {
       fetchContacts();
       if (activeContact) fetchMessages(activeContact);
@@ -118,11 +116,6 @@ const ChatPage = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('maker_token');
-    navigate('/');
-  };
-
   if (!currentUser) return null;
 
   return (
@@ -137,8 +130,9 @@ const ChatPage = () => {
         {/* พื้นที่แชทหลัก */}
         <div className="flex-1 flex overflow-hidden">
           
-          {/* ช่องซ้าย: รายชื่อผู้ติดต่อ */}
-          <div className="w-[300px] border-r border-[#2d2d2f] bg-[#1c1c1e] flex flex-col">
+          {/* ================= ช่องซ้าย: รายชื่อผู้ติดต่อ ================= */}
+          {/* 🌟 ปรับให้ซ่อนในมือถือ ถ้ามี activeContact */}
+          <div className={`w-full md:w-[300px] border-r border-[#2d2d2f] bg-[#1c1c1e] flex-col ${activeContact ? 'hidden md:flex' : 'flex'}`}>
             <div className="p-4 border-b border-[#2d2d2f]">
               <h2 className="text-lg font-bold text-white">Messages</h2>
             </div>
@@ -166,7 +160,6 @@ const ChatPage = () => {
                         </div>
                       </div>
                       
-                      {/* 🌟 ป้ายแจ้งเตือนสีแดง (แสดงเฉพาะคนที่ยังไม่ได้เปิดอ่าน) 🌟 */}
                       {contactObj.unread > 0 && !isActive && (
                         <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                           {contactObj.unread}
@@ -179,12 +172,23 @@ const ChatPage = () => {
             </div>
           </div>
 
-          {/* ช่องขวา: กล่องแชท */}
-          <div className="flex-1 flex flex-col bg-[#121212]">
+          {/* ================= ช่องขวา: กล่องแชท ================= */}
+          {/* 🌟 ปรับให้ซ่อนในมือถือ ถ้ายังไม่มี activeContact */}
+          <div className={`flex-1 flex-col bg-[#121212] ${!activeContact ? 'hidden md:flex' : 'flex'}`}>
             {activeContact ? (
               <>
                 {/* Header แชท */}
                 <div className="p-4 border-b border-[#2d2d2f] bg-[#1c1c1e] flex items-center gap-3 shadow-sm">
+                  {/* 🌟 ปุ่ม Back สำหรับมือถือ */}
+                  <button 
+                    onClick={() => setActiveContact(null)} 
+                    className="md:hidden text-gray-400 hover:text-white flex items-center pr-2"
+                  >
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+
                   <div className="w-10 h-10 bg-[#FF7518] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
                     {activeContact.charAt(0).toUpperCase()}
                   </div>
