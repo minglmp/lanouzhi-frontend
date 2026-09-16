@@ -124,6 +124,19 @@ const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSucce
     }
   }, []);
 
+  // 🌟 เพิ่ม useEffect ตัวนี้เพื่อล็อกการ Scroll ของพื้นหลัง (แก้บัคเลื่อนทะลุ)
+  useEffect(() => {
+    if (isUploadModalOpen || isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isUploadModalOpen, isMobileMenuOpen]);
+
   const handleLogout = () => {
     localStorage.removeItem('maker_token');
     window.location.href = '/';
@@ -193,9 +206,12 @@ const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSucce
       {/* ================= Upload Modal ================= */}
       {isUploadModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity">
-          <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+          {/* 🌟 ปรับ className เพิ่ม max-h, overflow, overscroll เพื่อแก้บัคเลื่อนทะลุ */}
+          <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain scroll-smooth p-8 shadow-2xl relative animate-in fade-in zoom-in duration-200 hide-scrollbar">
+            
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Upload New Model 🎨</h2>
             {uploadError && <div className="mb-6 p-4 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">{uploadError}</div>}
+            
             <form onSubmit={handleUploadSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Model Name</label>
@@ -244,6 +260,7 @@ const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSucce
           </div>
         </div>
       )}
+      
       {/* ================= 🌟 MOBILE MENU OVERLAY (เมนูมือถือ) 🌟 ================= */}
       {isMobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-[100] bg-[#121212] flex flex-col animate-in fade-in slide-in-from-right-8 duration-300">
