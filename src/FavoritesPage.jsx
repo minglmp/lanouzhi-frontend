@@ -87,8 +87,9 @@ const FavoritesPage = () => {
 
   return (
     <div className="flex min-h-screen bg-[#121212] font-sans relative">
+      <div className="hidden md:flex w-64 flex-shrink-0">
       <Sidebar activeTab="favorites"/>
-
+      </div>
       {/* ================= Main Content ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
         <Topbar />

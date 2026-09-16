@@ -296,12 +296,12 @@ const HomePage = () => {
 
   return (
     <div className="flex min-h-screen bg-[#121212] font-sans relative">
-
-      <Sidebar activeTab="home"/>
+      <div className="hidden md:flex w-64 flex-shrink-0">
+        <Sidebar activeTab="home"/>
+      </div>
 
       {/* ================= 2. พื้นที่เนื้อหาหลัก ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
-
       <Topbar 
         showSearch={true} 
         searchQuery={searchQuery} 
@@ -335,7 +335,7 @@ const HomePage = () => {
               <p className="text-sm opacity-80">Check back later for new arrivals!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4">
               {filteredModels.map((model) => (
                 <div key={model.id} onClick={() => navigate(`/model/${model.id}`)} className="group bg-gray-900 rounded-3xl overflow-hidden border border-gray-800 shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col relative cursor-pointer">
                   

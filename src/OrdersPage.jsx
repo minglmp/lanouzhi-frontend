@@ -102,9 +102,9 @@ const OrdersPage = () => {
 
   return (
     <div className="flex min-h-screen bg-[#18181a] font-sans relative">
-      
+      <div className="hidden md:flex w-64 flex-shrink-0">
       <Sidebar activeTab="orders"/>
-
+      </div>
       {/* ================= Main Content ================= */}
       <div className="flex-1 flex flex-col min-w-0 pb-12">
         <Topbar />

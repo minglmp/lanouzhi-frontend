@@ -170,8 +170,8 @@ const DetailPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
             
             {/* ซ้าย: แกลเลอรีรูปภาพ */}
-            <div className="flex flex-col gap-4">
-              <div className="w-full aspect-[4/3] bg-black rounded-3xl overflow-hidden border border-[#2d2d2f] shadow-lg">
+            <div className="flex flex-col md:flex-row gap-8 p-4 md:p-8">
+              <div className="w-full md:w-1/2 lg:w-2/3">
                 <img 
                   src={images[activeImageIndex]} 
                   alt={model.title} 
@@ -198,7 +198,7 @@ const DetailPage = () => {
 
             {/* ขวา: รายละเอียดและการสั่งซื้อ */}
             <div className="flex flex-col">
-              <div className="flex items-start justify-between gap-4 mb-2">
+              <div className="w-full md:w-1/2 lg:w-1/3 flex flex-col gap-4">
                 <h1 className="text-4xl font-bold text-white leading-tight">{model.title}</h1>
                 <button 
                   onClick={handleLike} 
