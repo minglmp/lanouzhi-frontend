@@ -182,15 +182,3 @@
     border-right-color: var(--border);
   }
 }
-
-/* ==========================================
-   ซ่อน Scrollbar แต่ยังสามารถไถเลื่อนได้ปกติ
-   ========================================== */
-.hide-scrollbar::-webkit-scrollbar {
-  display: none; /* สำหรับ Chrome, Safari, Opera */
-}
-
-.hide-scrollbar {
-  -ms-overflow-style: none;  /* สำหรับ IE และ Edge */
-  scrollbar-width: none;  /* สำหรับ Firefox */
-}
