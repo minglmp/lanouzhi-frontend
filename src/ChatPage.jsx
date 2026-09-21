@@ -15,6 +15,7 @@ const ChatPage = () => {
   const [totalUnread, setTotalUnread] = useState(0); 
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+  const forceScrollRef = useRef(false);
 
   const token = localStorage.getItem('maker_token');
   let currentUser = null;
@@ -34,17 +35,28 @@ const ChatPage = () => {
     if (!token) navigate('/auth');
   }, [navigate, token]);
 
-  // 🌟 ฟังก์ชันเลื่อนจอแบบฉลาด (Smart Scroll)
+  // 🌟 1. เมื่อกดเปลี่ยนคนคุย ให้ตั้งสถานะว่า "เตรียมบังคับเลื่อนจอ"
+  useEffect(() => {
+    forceScrollRef.current = true;
+  }, [activeContact]);
+
+  // 🌟 2. ฟังก์ชันเลื่อนจอแบบฉลาด (ทำงานตอนข้อความโหลดเสร็จ หรือมีข้อความใหม่)
   useEffect(() => {
     if (!chatContainerRef.current) return;
     
     const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-    // เช็กว่าผู้ใช้อยู่ใกล้ๆ ด้านล่างสุดหรือไม่ (ระยะไม่เกิน 150px จากขอบล่าง)
+    // เช็กว่าผู้ใช้อยู่ใกล้ๆ ด้านล่างสุดหรือไม่
     const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
 
-    // จะเลื่อนจออัตโนมัติก็ต่อเมื่อ ผู้ใช้อยู่ด้านล่างสุดอยู่แล้วเท่านั้น
-    if (isNearBottom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // จะเลื่อนจอก็ต่อเมื่อ: เพิ่งเปลี่ยนห้องแชท (force) หรือ อยู่ล่างสุดอยู่แล้ว
+    if (forceScrollRef.current || isNearBottom) {
+      // หน่วงเวลาจิ๊ดนึงให้ React เรนเดอร์ข้อความลงจอให้เสร็จก่อน
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ 
+          behavior: forceScrollRef.current ? "auto" : "smooth" 
+        });
+        forceScrollRef.current = false; // ปิดสถานะบังคับเลื่อน
+      }, 50);
     }
   }, [messages]);
 
