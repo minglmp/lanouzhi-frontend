@@ -14,6 +14,7 @@ const ChatPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [totalUnread, setTotalUnread] = useState(0); 
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   const token = localStorage.getItem('maker_token');
   let currentUser = null;
@@ -33,12 +34,26 @@ const ChatPage = () => {
     if (!token) navigate('/auth');
   }, [navigate, token]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  // 🌟 ฟังก์ชันเลื่อนจอแบบฉลาด (Smart Scroll)
   useEffect(() => {
-    scrollToBottom();
+    if (!chatContainerRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    // เช็กว่าผู้ใช้อยู่ใกล้ๆ ด้านล่างสุดหรือไม่ (ระยะไม่เกิน 150px จากขอบล่าง)
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+
+    // จะเลื่อนจออัตโนมัติก็ต่อเมื่อ ผู้ใช้อยู่ด้านล่างสุดอยู่แล้วเท่านั้น
+    if (isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
+
+  // 🌟 บังคับเลื่อนลงล่างสุดทันที เฉพาะตอนที่ "กดสลับเปลี่ยนคนคุย" เท่านั้น
+  useEffect(() => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+    }, 100);
+  }, [activeContact]);
 
   const fetchContacts = async () => {
     if (!token) return;
@@ -199,7 +214,7 @@ const ChatPage = () => {
                 </div>
 
                 {/* ข้อความแชท */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 hide-scrollbar">
+                <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4 hide-scrollbar">
                   {isLoading && messages.length === 0 ? (
                     <div className="h-full flex items-center justify-center text-gray-500 text-sm">Loading...</div>
                   ) : messages.length === 0 ? (
@@ -207,23 +222,53 @@ const ChatPage = () => {
                       Start a conversation with @{activeContact}
                     </div>
                   ) : (
-                    messages.map((msg, idx) => {
-                      const isMe = msg.sender === currentUser;
-                      return (
-                        <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[70%] rounded-2xl px-5 py-3 shadow-sm ${
-                            isMe 
-                              ? 'bg-[#FF7518] text-white rounded-tr-sm' 
-                              : 'bg-[#2d2d2f] text-gray-100 rounded-tl-sm'
-                          }`}>
-                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                            <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-orange-200' : 'text-gray-400'}`}>
-                              {new Date(msg.created_at.replace(' ', 'T') + 'Z').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })
+                    /* 🌟 เพิ่มฟังก์ชันครอบ เพื่อใช้เช็กการเปลี่ยนวัน (Date Grouping) */
+                    (() => {
+                      let lastDateString = null;
+                      
+                      return messages.map((msg, idx) => {
+                        const isMe = msg.sender === currentUser;
+                        
+                        // สร้าง Object ดึงเวลาจาก Database
+                        const msgDateObj = new Date(msg.created_at.replace(' ', 'T') + 'Z');
+                        
+                        // ฟอร์แมตวันที่ออกมา (เช่น "21 Sep 2026")
+                        const msgDateString = msgDateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                        
+                        // เช็กว่าข้อความนี้ เปลี่ยนวันจากข้อความด้านบนหรือยัง
+                        const showDateDivider = msgDateString !== lastDateString;
+                        lastDateString = msgDateString; // อัปเดตตัวแปรไว้เช็กข้อความถัดไป
+
+                        return (
+                          <React.Fragment key={idx}>
+                            
+                            {/* 🌟 แสดงป้ายวันที่คั่นกลางแชท (แสดงเฉพาะตอนข้ามวัน) */}
+                            {showDateDivider && (
+                              <div className="flex justify-center my-6">
+                                <span className="bg-[#2d2d2f] text-gray-400 text-[11px] font-medium px-4 py-1.5 rounded-full shadow-sm">
+                                  {msgDateString}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* บับเบิ้ลข้อความแชท (เหมือนเดิม) */}
+                            <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`max-w-[70%] rounded-2xl px-5 py-3 shadow-sm ${
+                                isMe 
+                                  ? 'bg-[#FF7518] text-white rounded-tr-sm' 
+                                  : 'bg-[#2d2d2f] text-gray-100 rounded-tl-sm'
+                              }`}>
+                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-orange-200' : 'text-gray-400'}`}>
+                                  {msgDateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </p>
+                              </div>
+                            </div>
+
+                          </React.Fragment>
+                        );
+                      });
+                    })()
                   )}
                   <div ref={messagesEndRef} />
                 </div>
