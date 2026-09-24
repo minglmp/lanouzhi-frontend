@@ -155,9 +155,24 @@ const OrdersPage = () => {
                             )}
                             
                             {/* 🌟 แสดงวันที่สั่งซื้อ 🌟 */}
-                            <td className="px-6 py-4 text-gray-400 whitespace-nowrap">
-                              {formatDate(order.created_at)}
-                            </td>
+                            {/* Replace your current Date cell (<td>) with this: */}
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex flex-col">
+                                  {/* 🌟 Top row: Display the Date (White text) */}
+                                  <span className="text-white text-sm">
+                                    {new Date(order.created_at).toLocaleDateString('en-GB', { 
+                                      day: '2-digit', month: 'short', year: 'numeric' 
+                                    })}
+                                  </span>
+                                  
+                                  {/* 🌟 Bottom row: Display the Time (Gray text, slightly smaller) */}
+                                  <span className="text-xs text-gray-400 mt-0.5">
+                                    {new Date(order.created_at).toLocaleTimeString([], {
+                                      hour: '2-digit', minute:'2-digit'
+                                    })}
+                                  </span>
+                                </div>
+                              </td>
 
                             <td className="px-6 py-4 truncate max-w-[150px] text-gray-200">{order.model_title || order.model_id}</td>
                             <td className="px-6 py-4 text-center">
