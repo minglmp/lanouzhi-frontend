@@ -271,9 +271,20 @@ const ChatPage = () => {
                                   : 'bg-[#2d2d2f] text-gray-100 rounded-tl-sm'
                               }`}>
                                 <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                                <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-orange-200' : 'text-gray-400'}`}>
-                                  {msgDateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </p>
+                                {/* แทนที่แท็ก <p> แสดงเวลาอันเดิมด้วยกล่อง flex นี้ครับ */}
+                                <div className={`text-[10px] mt-1 flex items-center justify-end gap-1.5 ${isMe ? 'text-orange-200' : 'text-gray-400'}`}>
+                                  <span>{msgDateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                  
+                                  {/* แสดงคำว่า "Read" เฉพาะข้อความของเรา และเมื่อสถานะ msg.is_read เป็นจริงเท่านั้น */}
+                                  {isMe && msg.is_read === 1 && (
+                                    <span className="flex items-center text-white font-bold ml-1">
+                                      <svg className="w-3 h-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      Read
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
