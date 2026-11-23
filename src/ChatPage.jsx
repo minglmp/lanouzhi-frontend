@@ -2,7 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-import logoImg from './assets/logo2.jpeg';
+
+const API_BASE = 'https://my-cloudflare-api.lmps.workers.dev';
+
+// GET แบบมี token คืนค่า JSON หรือ null ถ้า response ไม่ ok
+const getChatJson = async (path, token) => {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.ok ? res.json() : null;
+};
 
 const ChatPage = () => {
   const navigate = useNavigate();
@@ -11,22 +20,21 @@ const ChatPage = () => {
   const [activeContact, setActiveContact] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [totalUnread, setTotalUnread] = useState(0); 
+  // ห้องแชทที่โหลดข้อความเสร็จล่าสุด ใช้คำนวณสถานะ loading แทนการ setState ใน effect
+  const [loadedContact, setLoadedContact] = useState(null);
+  const isLoading = activeContact !== null && loadedContact !== activeContact;
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const forceScrollRef = useRef(false);
 
   const token = localStorage.getItem('maker_token');
   let currentUser = null;
-  let currentUserRole = null;
 
   if (token) {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       currentUser = payload.username;
-      currentUserRole = payload.role;
-    } catch (e) {
+    } catch {
       console.error('Token invalid');
     }
   }
@@ -67,57 +75,49 @@ const ChatPage = () => {
     }, 100);
   }, [activeContact]);
 
-  const fetchContacts = async () => {
-    if (!token) return;
-    try {
-      const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/chat/contacts', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setContacts(data);
-        
-        const unreadCount = data.reduce((acc, curr) => acc + curr.unread, 0);
-        setTotalUnread(unreadCount);
-        
-        // คอมเมนต์บรรทัดล่างนี้ไว้ เพื่อให้มือถือไม่ถูกบังคับเปิดแชทแรกอัตโนมัติ
-        // if (data.length > 0 && !activeContact) setActiveContact(data[0].name);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const fetchMessages = async (contact) => {
     if (!token || !contact) return;
     try {
-      const res = await fetch(`https://my-cloudflare-api.lmps.workers.dev/api/chat/${contact}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMessages(data);
-      }
+      const data = await getChatJson(`/api/chat/${contact}`, token);
+      if (data) setMessages(data);
     } catch (err) {
       console.error(err);
     }
   };
 
+  // โหลดรายชื่อทันที แล้ว poll รายชื่อ + ข้อความของห้องที่เปิดอยู่ทุก 3 วินาที
+  // (คอมเมนต์ไว้: ไม่บังคับเปิดแชทแรกอัตโนมัติ เพื่อให้มือถือไม่เด้งเข้าห้องแชทเอง)
   useEffect(() => {
-    fetchContacts();
+    if (!token) return;
+    const loadContacts = () =>
+      getChatJson('/api/chat/contacts', token)
+        .then((data) => { if (data) setContacts(data); })
+        .catch(console.error);
+    const loadMessages = () => {
+      if (!activeContact) return;
+      getChatJson(`/api/chat/${activeContact}`, token)
+        .then((data) => { if (data) setMessages(data); })
+        .catch(console.error);
+    };
+
+    loadContacts();
     const interval = setInterval(() => {
-      fetchContacts();
-      if (activeContact) fetchMessages(activeContact);
+      loadContacts();
+      loadMessages();
     }, 3000);
     return () => clearInterval(interval);
-  }, [activeContact]);
+  }, [activeContact, token]);
 
+  // โหลดข้อความทันทีเมื่อเปลี่ยนห้องแชท
   useEffect(() => {
-    if (activeContact) {
-      setIsLoading(true);
-      fetchMessages(activeContact).finally(() => setIsLoading(false));
-    }
-  }, [activeContact]);
+    if (!token || !activeContact) return;
+    let cancelled = false;
+    getChatJson(`/api/chat/${activeContact}`, token)
+      .then((data) => { if (!cancelled && data) setMessages(data); })
+      .catch(console.error)
+      .finally(() => { if (!cancelled) setLoadedContact(activeContact); });
+    return () => { cancelled = true; };
+  }, [activeContact, token]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();

@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-import logoImg from './assets/logo2.jpeg';
 
 const OrdersPage = () => {
   const navigate = useNavigate();
@@ -21,36 +20,26 @@ const OrdersPage = () => {
       const payload = JSON.parse(atob(token.split('.')[1]));
       currentUserRole = payload.role;
       currentUser = payload.username;
-    } catch (e) {
+    } catch {
       console.error('Token invalid');
     }
   }
 
-  const fetchOrders = useCallback(async () => {
-    if (!token) return;
-    setIsLoadingOrders(true);
-    try {
-      const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/orders', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(data);
-      }
-    } catch (err) {
-      console.error('Error fetching orders:', err);
-    } finally {
-      setIsLoadingOrders(false);
-    }
-  }, [token]);
-
   useEffect(() => {
     if (!token) {
       navigate('/auth');
-    } else {
-      fetchOrders();
+      return;
     }
-  }, [navigate, token, fetchOrders]);
+    let cancelled = false;
+    fetch('https://my-cloudflare-api.lmps.workers.dev/api/orders', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (!cancelled && data) setOrders(data); })
+      .catch((err) => console.error('Error fetching orders:', err))
+      .finally(() => { if (!cancelled) setIsLoadingOrders(false); });
+    return () => { cancelled = true; };
+  }, [navigate, token]);
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
@@ -67,14 +56,9 @@ const OrdersPage = () => {
       } else {
         alert('Failed to update order status');
       }
-    } catch (err) {
+    } catch {
       alert('Server error occurred.');
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('maker_token');
-    navigate('/');
   };
 
   const pendingOrdersCount = currentUserRole === 'admin' 
@@ -85,18 +69,6 @@ const OrdersPage = () => {
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
   const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
   const totalPages = Math.ceil(orders.length / ordersPerPage);
-
-  // 🌟 ฟังก์ชันแปลงวันที่ให้ดูอ่านง่าย (เช่น 10 Sep 2026)
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    // แปลงรูปแบบที่มาจาก SQLite (YYYY-MM-DD HH:MM:SS) ให้ Date ของ JavaScript รู้จัก
-    const date = new Date(dateString.replace(' ', 'T') + 'Z');
-    return date.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
 
   if (!currentUser) return null;
 

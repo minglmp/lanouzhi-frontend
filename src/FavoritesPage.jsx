@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-import logoImg from './assets/logo2.jpeg';
 
 const parseImages = (imageUrlField) => {
   try {
@@ -13,6 +12,14 @@ const parseImages = (imageUrlField) => {
   }
 };
 
+// ดึงรายการโมเดลที่กดไลก์ไว้ คืนค่า null ถ้า response ไม่ ok
+const getFavorites = async (token) => {
+  const response = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/user/favorites', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.ok ? response.json() : null;
+};
+
 const FavoritesPage = () => {
   const navigate = useNavigate();
   const [favoriteModels, setFavoriteModels] = useState([]);
@@ -20,14 +27,12 @@ const FavoritesPage = () => {
 
   const token = localStorage.getItem('maker_token');
   let currentUser = null;
-  let currentUserRole = null;
 
   if (token) {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       currentUser = payload.username;
-      currentUserRole = payload.role;
-    } catch (e) {
+    } catch {
       console.error('Token invalid');
     }
   }
@@ -37,25 +42,20 @@ const FavoritesPage = () => {
     if (!token) navigate('/auth');
   }, [navigate, token]);
 
-  const fetchFavorites = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/user/favorites', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setFavoriteModels(data);
-      }
-    } catch (error) {
-      console.error('Error fetching favorites:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchFavorites = () =>
+    getFavorites(token)
+      .then((data) => { if (data) setFavoriteModels(data); })
+      .catch((error) => console.error('Error fetching favorites:', error))
+      .finally(() => setIsLoading(false));
 
   useEffect(() => {
-    if (token) fetchFavorites();
+    if (!token) return;
+    let cancelled = false;
+    getFavorites(token)
+      .then((data) => { if (!cancelled && data) setFavoriteModels(data); })
+      .catch((error) => console.error('Error fetching favorites:', error))
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
   }, [token]);
 
   const handleUnlike = async (e, modelId) => {
@@ -76,11 +76,6 @@ const FavoritesPage = () => {
       fetchFavorites();
       alert('Network error. Could not unlike.');
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('maker_token');
-    navigate('/');
   };
 
   if (!currentUser) return null;

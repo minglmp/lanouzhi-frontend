@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-import logoImg from './assets/logo2.jpeg';
 
 const parseImages = (imageUrlField) => {
   try {
@@ -35,14 +34,12 @@ const DetailPage = () => {
   const token = localStorage.getItem('maker_token');
   const isLoggedIn = !!token;
   let currentUser = null;
-  let currentUserRole = null;
 
   if (token) {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       currentUser = payload.username;
-      currentUserRole = payload.role;
-    } catch (e) {
+    } catch {
       console.error('Token invalid');
     }
   }
@@ -95,7 +92,7 @@ const DetailPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed');
-    } catch (err) {
+    } catch {
       setIsLiked(currentlyLiked);
       setLikeCount(prev => currentlyLiked ? prev + 1 : Math.max(0, prev - 1));
       alert('Network error. Could not update like status.');
@@ -129,16 +126,11 @@ const DetailPage = () => {
       } else {
         alert('Failed to place order.');
       }
-    } catch (err) {
+    } catch {
       alert('Server error occurred.');
     } finally {
       setIsPlacingOrder(false);
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('maker_token');
-    window.location.reload();
   };
 
   if (isLoading) {

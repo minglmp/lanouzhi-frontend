@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoImg from './assets/logorm.png';
 
@@ -110,7 +110,7 @@ const AuthPage = () => {
         // ❌ ไม่สำเร็จ! แสดงข้อความ Error สีแดง
         setForgotError(data.message || 'Failed to reset password');
       }
-    } catch (err) {
+    } catch {
       setForgotError('Server error occurred.');
     } finally {
       setIsResetting(false);

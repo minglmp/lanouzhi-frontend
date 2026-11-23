@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-import logoImg from './assets/logo2.jpeg';
 
 const CATEGORIES = ['All', 'New', 'Art', 'Gadgets', 'Toys'];
 
@@ -15,98 +14,48 @@ const parseImages = (imageUrlField) => {
   }
 };
 
+const API_BASE = 'https://my-cloudflare-api.lmps.workers.dev';
+
+// GET JSON (แนบ token ถ้ามี) คืนค่า null ถ้า response ไม่ ok
+const getJson = async (path, token) => {
+  const res = await fetch(`${API_BASE}${path}`, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+  return res.ok ? res.json() : null;
+};
+
 const HomePage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(CATEGORIES[0]);
 
   const [models, setModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [orders, setOrders] = useState([]);
-  
-  const [likedModels, setLikedModels] = useState(new Set());
 
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [newPrice, setNewPrice] = useState('');
-  
-  const [newImageFiles, setNewImageFiles] = useState([]); 
-  const [newImagePreviews, setNewImagePreviews] = useState([]); 
-  
-  const [newCategory, setNewCategory] = useState('Art');
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState('');
+  const [likedModels, setLikedModels] = useState(new Set());
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   const token = localStorage.getItem('maker_token');
   const isLoggedIn = !!token;
 
-  let currentUser = null;
-  let currentUserRole = null;
-
-  if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      currentUser = payload.username;
-      currentUserRole = payload.role;
-    } catch (e) {
-      console.error('Token invalid');
-    }
-  }
-
-  const fetchModels = async () => {
-    try {
-      const response = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/models');
-      if (response.ok) {
-        const data = await response.json();
-        setModels(data);
-      }
-    } catch (error) {
-      console.error('Error fetching models:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchOrders = async () => {
-    if (!token) return;
-    try {
-      const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/orders', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(data);
-      }
-    } catch (err) {
-      console.error('Error fetching orders:', err);
-    }
-  };
-
-  const fetchUserLikes = async () => {
-    if (!token) return;
-    try {
-      const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/user/likes', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const likedIds = await res.json();
-        setLikedModels(new Set(likedIds)); 
-      }
-    } catch (err) {
-      console.error('Error fetching likes:', err);
-    }
-  };
+  // โหลดโมเดลใหม่ (เรียกจาก Topbar หลังอัปโหลดสำเร็จ)
+  const fetchModels = () =>
+    getJson('/api/models')
+      .then((data) => { if (data) setModels(data); })
+      .catch((error) => console.error('Error fetching models:', error))
+      .finally(() => setIsLoading(false));
 
   useEffect(() => {
-    fetchModels();
-    fetchOrders(); 
-    fetchUserLikes(); 
-  }, []);
+    let cancelled = false;
+    getJson('/api/models')
+      .then((data) => { if (!cancelled && data) setModels(data); })
+      .catch((error) => console.error('Error fetching models:', error))
+      .finally(() => { if (!cancelled) setIsLoading(false); });
 
-  const pendingOrdersCount = currentUserRole === 'admin' 
-    ? orders.filter(order => order.status === 'pending').length 
-    : 0;
+    if (token) {
+      getJson('/api/user/likes', token)
+        .then((likedIds) => { if (!cancelled && likedIds) setLikedModels(new Set(likedIds)); })
+        .catch((err) => console.error('Error fetching likes:', err));
+    }
+    return () => { cancelled = true; };
+  }, [token]);
 
   const handleLike = async (e, modelId) => {
     e.stopPropagation(); 
@@ -168,103 +117,6 @@ const HomePage = () => {
     }
   };
 
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-
-    if (newImageFiles.length + files.length > 4) {
-      alert('You can upload up to 4 images per model.');
-      return;
-    }
-
-    const validFiles = [];
-    const previews = [];
-
-    files.forEach((file) => {
-      if (file.size > 1024 * 1024) {
-        alert(`File "${file.name}" exceeds 1MB.`);
-        return;
-      }
-      validFiles.push(file);
-      previews.push(URL.createObjectURL(file)); 
-    });
-
-    setNewImageFiles((prev) => [...prev, ...validFiles]);
-    setNewImagePreviews((prev) => [...prev, ...previews]);
-  };
-
-  const handleRemoveImage = (indexToRemove) => {
-    setNewImageFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
-    setNewImagePreviews((prev) => prev.filter((_, idx) => idx !== indexToRemove));
-  };
-
-  const handleUploadSubmit = async (e) => {
-    e.preventDefault();
-    if (newImageFiles.length === 0) {
-      setUploadError('Please select at least one image before uploading.');
-      return;
-    }
-    
-    setIsUploading(true);
-    setUploadError('');
-
-    try {
-      const uploadedUrls = [];
-
-      for (const file of newImageFiles) {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const uploadRes = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/upload', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData
-        });
-
-        if (!uploadRes.ok) throw new Error('Failed to upload image to Cloudflare R2');
-        
-        const uploadData = await uploadRes.json();
-        const r2PublicUrl = `https://pub-3e184cc2bc334d1fbf04415454aa22ef.r2.dev/${uploadData.fileName}`;
-        uploadedUrls.push(r2PublicUrl);
-      }
-
-      const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/models', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          title: newTitle,
-          description: newDescription,
-          price: Number(newPrice) || 0,
-          images: uploadedUrls, 
-          category: newCategory
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error_detail || 'Upload failed');
-
-      setIsUploadModalOpen(false);
-      setNewTitle('');
-      setNewDescription('');
-      setNewPrice('');
-      setNewImageFiles([]);
-      setNewImagePreviews([]);
-      fetchModels();
-    } catch (err) {
-      setUploadError(err.message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('maker_token');
-    window.location.reload();
-  };
-
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredModels = models.filter((model) => {
@@ -273,7 +125,7 @@ const HomePage = () => {
     const matchAuthor = model.author && model.author.toLowerCase().includes(query);
     const matchSearch = matchTitle || matchAuthor;
 
-    let matchCategory = true;
+    let matchCategory;
 
     if (activeTab === 'All') {
       matchCategory = true;

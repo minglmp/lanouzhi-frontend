@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoImg from './assets/logo2.jpeg';
 
@@ -12,7 +12,9 @@ const Sidebar = ({ activeTab }) => {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       currentUserRole = payload.role;
-    } catch (e) {}
+    } catch {
+      // token เสียหาย: ถือว่าไม่มีสิทธิ์พิเศษ (currentUserRole = null)
+    }
   }
 
   const [pendingOrders, setPendingOrders] = useState(0);

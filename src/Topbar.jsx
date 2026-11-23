@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import logoImg from './assets/logo2.jpeg';
 
 const CATEGORIES = ['Art', 'Gadgets', 'Toys'];
@@ -7,10 +7,18 @@ const CATEGORIES = ['Art', 'Gadgets', 'Toys'];
 const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSuccess, showBack = false }) => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [userRole, setUserRole] = useState(null);
-  const location = useLocation();
   const token = localStorage.getItem('maker_token');
   const isLoggedIn = !!token;
+
+  // ถอดรหัส JWT payload ตอน render เลย (ไม่ต้องเก็บใน state) เพื่อเช็กสิทธิ์โชว์ปุ่ม Upload
+  let userRole = null;
+  if (token) {
+    try {
+      userRole = JSON.parse(atob(token.split('.')[1])).role;
+    } catch (e) {
+      console.error("Error decoding token:", e);
+    }
+  }
 
   // State สำหรับระบบ Upload
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -111,19 +119,6 @@ const Topbar = ({ showSearch = false, searchQuery, setSearchQuery, onUploadSucce
       setIsUploading(false);
     }
   };
-
-  useEffect(() => {
-    const token = localStorage.getItem('maker_token');
-    if (token) {
-      try {
-        // ถอดรหัส JWT Token เพื่อดึงข้อมูล payload (โดยไม่ต้องใช้ไลบรารีเพิ่ม)
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUserRole(payload.role); 
-      } catch (e) {
-        console.error("Error decoding token:", e);
-      }
-    }
-  }, []);
 
   // 🌟 เพิ่ม useEffect ตัวนี้เพื่อล็อกการ Scroll ของพื้นหลัง (แก้บัคเลื่อนทะลุ)
   useEffect(() => {

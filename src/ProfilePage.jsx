@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-import logoImg from './assets/logo2.jpeg';
 
 const CATEGORIES = ['All', 'New', 'Art', 'Gadgets', 'Toys'];
 
@@ -15,14 +14,21 @@ const parseImages = (imageUrlField) => {
   }
 };
 
+// ดึงโมเดลทั้งหมด แล้วกรองเฉพาะของผู้ใช้ (Admin เห็นทั้งหมด) คืนค่า null ถ้า response ไม่ ok
+const getMyModels = async (currentUser, currentUserRole) => {
+  const response = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/models');
+  if (!response.ok) return null;
+  const allModels = await response.json();
+  return currentUserRole === 'admin'
+    ? allModels
+    : allModels.filter((model) => model.author === currentUser);
+};
+
 const ProfilePage = () => {
   const navigate = useNavigate();
 
   const [myModels, setMyModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // โหลดออเดอร์แค่มาเพื่อนับ Badge แดงๆ ให้ Sidebar
-  const [orders, setOrders] = useState([]); 
 
   const [editingModel, setEditingModel] = useState(null);
   const [editTitle, setEditTitle] = useState('');
@@ -44,58 +50,30 @@ const ProfilePage = () => {
       const payload = JSON.parse(atob(token.split('.')[1]));
       currentUser = payload.username;
       currentUserRole = payload.role;
-    } catch (e) {
+    } catch {
       console.error('Token invalid');
     }
   }
 
-  const fetchMyModels = useCallback(async () => {
-    try {
-      const response = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/models');
-      if (response.ok) {
-        const allModels = await response.json();
-        const filtered = currentUserRole === 'admin'
-          ? allModels
-          : allModels.filter((model) => model.author === currentUser);
-        setMyModels(filtered);
-      }
-    } catch (error) {
-      console.error('Error fetching models:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentUser, currentUserRole]);
-
-  const fetchOrdersBadge = useCallback(async () => {
-    if (!token) return;
-    try {
-      const res = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/orders', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(data);
-      }
-    } catch (err) {
-      console.error('Error fetching orders:', err);
-    }
-  }, [token]);
+  // โหลดใหม่หลังลบ/แก้ไขโมเดล
+  const fetchMyModels = () =>
+    getMyModels(currentUser, currentUserRole)
+      .then((data) => { if (data) setMyModels(data); })
+      .catch((error) => console.error('Error fetching models:', error))
+      .finally(() => setIsLoading(false));
 
   useEffect(() => {
     if (!token) {
       navigate('/auth');
-    } else {
-      fetchMyModels();
-      fetchOrdersBadge();
+      return;
     }
-  }, [navigate, token, fetchMyModels, fetchOrdersBadge]);
-
-  const pendingOrdersCount = currentUserRole === 'admin' ? orders.filter(order => order.status === 'pending').length : 0;
-
-  const handleLogout = () => {
-    localStorage.removeItem('maker_token');
-    navigate('/');
-  };
+    let cancelled = false;
+    getMyModels(currentUser, currentUserRole)
+      .then((data) => { if (!cancelled && data) setMyModels(data); })
+      .catch((error) => console.error('Error fetching models:', error))
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, [navigate, token, currentUser, currentUserRole]);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this model?')) return;
@@ -105,7 +83,7 @@ const ProfilePage = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) fetchMyModels();
-    } catch (err) {
+    } catch {
       alert('Server error occurred.');
     }
   };
@@ -195,7 +173,7 @@ const ProfilePage = () => {
       } else {
         alert('Failed to update model.');
       }
-    } catch (err) {
+    } catch {
       alert('Server error occurred.');
     } finally {
       setIsUpdating(false);
