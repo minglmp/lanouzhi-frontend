@@ -217,7 +217,8 @@ const HomePage = () => {
 
         const uploadRes = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/upload', {
           method: 'POST',
-          body: formData 
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
         });
 
         if (!uploadRes.ok) throw new Error('Failed to upload image to Cloudflare R2');

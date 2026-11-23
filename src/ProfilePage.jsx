@@ -166,6 +166,7 @@ const ProfilePage = () => {
         formData.append('file', file);
         const uploadRes = await fetch('https://my-cloudflare-api.lmps.workers.dev/api/upload', {
           method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
           body: formData
         });
         if (!uploadRes.ok) throw new Error('Failed to upload new image');
